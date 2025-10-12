@@ -1,0 +1,41 @@
+<!-- favoritos.html -->
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Favoritos - Activá</title>
+  <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+  <header class="header-principal">
+    <div class="header-content">
+      <a href="inicio.html">
+        <img src="img/Acti-removebg-preview.png" alt="Símbolo Acti" class="header-simbolo-izq">
+      </a>
+      <a href="inicio.html">
+        <img src="img/LOGO-removebg-preview.png" alt="Logo principal Activá" class="header-logo-centro">
+      </a>
+    </div>
+  </header>
+  <nav class="nav-bar nav-lila">
+    <a href="inicio.html">Inicio</a>
+    <a href="crear-evento.html">Crear Evento</a>
+    <a href="favoritos.html" class="active">Favoritos</a>
+    <a href="perfil.html">Perfil</a>
+  </nav>
+  <main class="main-container">
+    <h1 class="inicio-titulo">Mis Favoritos</h1>
+    <section id="favoritos-lista">
+      <!-- Los eventos favoritos se mostrarán aquí dinámicamente -->
+    </section>
+  </main>
+  <footer class="footer-tfi">
+    TFI INGENIERIA EN SISTEMAS DE INFORMACION 2025. AUTORES : MAROSECK YELENKA Y RUIZ DIAZ LUCIANO
+  </footer>
+  <script src="script/script.js"></script>
+  <!-- Firebase App (core) -->
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js"></script>
+  <!-- Firebase Firestore -->
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js"></script>
+</body>
+</html>
