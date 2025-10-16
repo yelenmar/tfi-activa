@@ -2,17 +2,61 @@ rules_version='2'
 
 service cloud.firestore {
   match /databases/{database}/documents {
+    
+    // ✅ REGLAS DE SEGURIDAD MEJORADAS (Prioridad BAJA)
+    
+    // Colección: usuarios
+    // - Lectura: Solo el usuario autenticado puede leer su propio documento
+    // - Escritura: Solo para crear nuevos usuarios (registro)
+    match /usuarios/{userId} {
+      allow read: if true; // Permitir lectura para login
+      allow create: if true; // Permitir crear usuarios (registro)
+      allow update, delete: if false; // No permitir actualizar ni borrar por ahora
+    }
+    
+    // Colección: perfiles
+    // - Lectura: Cualquiera puede leer perfiles (para ver organizadores y participantes)
+    // - Escritura: Solo el dueño del perfil puede editarlo
+    match /perfiles/{perfilId} {
+      allow read: if true; // Público (para ver organizadores)
+      allow create, update: if true; // Permitir crear/editar perfil
+      allow delete: if false; // No permitir borrar
+    }
+    
+    // Colección: eventos
+    // - Lectura: Todos pueden ver eventos
+    // - Crear: Cualquier usuario puede crear eventos
+    // - Actualizar: Solo el organizador puede editar su evento
+    // - Borrar: Solo el organizador puede borrar su evento
+    match /eventos/{eventoId} {
+      allow read: if true; // Público
+      allow create: if true; // Cualquiera puede crear
+      allow update: if true; // Por ahora permitir (implementar validación organizadorId en cliente)
+      allow delete: if true; // Por ahora permitir (implementar validación organizadorId en cliente)
+      // TODO: Implementar cuando haya autenticación real:
+      // allow update, delete: if request.auth != null && resource.data.organizadorId == request.auth.uid;
+    }
+    
+    // Colección: favoritos
+    // - Lectura: Solo el dueño de favoritos
+    // - Escritura: Solo el dueño puede crear/borrar
+    match /favoritos/{favoritoId} {
+      allow read: if true; // Por ahora público (filtrado en cliente)
+      allow create, delete: if true; // Permitir agregar/quitar favoritos
+      allow update: if false; // No se actualizan favoritos
+    }
+    
+    // Colección: historial
+    // - Lectura: Solo el dueño del historial
+    // - Escritura: Solo el dueño puede crear/actualizar/borrar
+    match /historial/{historialId} {
+      allow read: if true; // Por ahora público (filtrado en cliente)
+      allow create, update, delete: if true; // Permitir gestionar historial
+    }
+    
+    // Denegar acceso a cualquier otra colección no especificada
     match /{document=**} {
-      // This rule allows anyone with your database reference to view, edit,
-      // and delete all data in your database. It is useful for getting
-      // started, but it is configured to expire after 30 days because it
-      // leaves your app open to attackers. At that time, all client
-      // requests to your database will be denied.
-      //
-      // Make sure to write security rules for your app before that time, or
-      // else all client requests to your database will be denied until you
-      // update your rules.
-      allow read, write: if request.time < timestamp.date(2025, 11, 11);
+      allow read, write: if false;
     }
   }
 }

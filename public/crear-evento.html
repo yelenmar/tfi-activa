@@ -4,6 +4,7 @@
   <meta charset="UTF-8">
   <title>Crear Evento - Activá</title>
   <link rel="stylesheet" href="css/styles.css">
+  <meta name="firebase-config" content='{"apiKey":"AIzaSyAgufVX3sdXEzTJQC6ZTqv6Clh0Coo4A40","authDomain":"tfi-activa.firebaseapp.com","projectId":"tfi-activa","storageBucket":"tfi-activa.firebasestorage.app","messagingSenderId":"459768332837","appId":"1:459768332837:web:e28594decec0743631b5cc","measurementId":"G-5944BHTK50"}'>
 </head>
 <body>
   <header class="header-principal">
@@ -17,14 +18,21 @@
     </div>
   </header>
   <nav class="nav-bar nav-lila">
-    <a href="inicio.html">Inicio</a>
-    <a href="crear-evento.html" class="active">Crear Evento</a>
-    <a href="favoritos.html">Favoritos</a>
-    <a href="perfil.html">Perfil</a>
+    <div class="nav-center">
+      <a href="inicio.html">Inicio</a>
+      <a href="crear-evento.html" class="active">Crear Evento</a>
+      <a href="favoritos.html">Favoritos</a>
+      <a href="perfil.html">Perfil</a>
+    </div>
+    <div class="nav-right">
+      <a href="#" class="nav-logout-btn" id="nav-cerrar-sesion" style="display: none;">Cerrar Sesión</a>
+      <button class="nav-menu-btn-inline" aria-label="Menú opciones">&#8942;</button>
+    </div>
   </nav>
   <main class="crear-evento-main-nueva">
+    <!-- La verificación de sesión se realiza desde script.js -->
     <h1 class="crear-evento-titulo-nueva">Crear Nuevo Evento</h1>
-    <form id="form-crear-evento" class="crear-evento-box-nueva" autocomplete="off">
+  <form id="form-crear-evento" class="crear-evento-box-nueva" autocomplete="off">
       <label for="titulo" class="crear-evento-label-nueva">Título del Evento</label>
       <input type="text" id="titulo" name="titulo" required placeholder="Ej: Clase de Cocina: Pasta Italiana" class="crear-evento-input-nueva">
 
@@ -38,11 +46,11 @@
         </div>
         <div>
           <label for="hora" class="crear-evento-label-nueva">Hora</label>
-          <input type="time" id="hora" name="hora" required class="crear-evento-input-nueva">
+          <input type="time" id="hora" name="hora" required class="crear-evento-input-nueva" placeholder="HH:mm" step="60">
         </div>
         <div>
           <label for="max-personas" class="crear-evento-label-nueva">Máximo de Participantes</label>
-          <input type="number" id="max-personas" name="max-personas" min="1" required placeholder="Ej: 10" class="crear-evento-input-personas">
+          <input type="text" id="max-personas" name="max-personas" inputmode="numeric" pattern="[0-9]+" required placeholder="Ej: 10" class="crear-evento-input-personas">
         </div>
       </div>
 
@@ -55,10 +63,7 @@
   <footer class="footer-tfi">
     TFI INGENIERIA EN SISTEMAS DE INFORMACION 2025. AUTORES : MAROSECK YELENKA Y RUIZ DIAZ LUCIANO
   </footer>
-  <script src="script/script.js"></script>
-  <!-- Firebase App (core) -->
-<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js"></script>
-<!-- Firebase Firestore -->
-<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js"></script>
+  <script type="module" src="script/script.js"></script>
+  <!-- Solo se mantiene la referencia a script.js -->
 </body>
 </html>

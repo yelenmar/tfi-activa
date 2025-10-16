@@ -5,6 +5,7 @@
   <meta charset="UTF-8">
   <title>Favoritos - Activá</title>
   <link rel="stylesheet" href="css/styles.css">
+  <meta name="firebase-config" content='{"apiKey":"AIzaSyAgufVX3sdXEzTJQC6ZTqv6Clh0Coo4A40","authDomain":"tfi-activa.firebaseapp.com","projectId":"tfi-activa","storageBucket":"tfi-activa.firebasestorage.app","messagingSenderId":"459768332837","appId":"1:459768332837:web:e28594decec0743631b5cc","measurementId":"G-5944BHTK50"}'>
 </head>
 <body>
   <header class="header-principal">
@@ -18,10 +19,16 @@
     </div>
   </header>
   <nav class="nav-bar nav-lila">
-    <a href="inicio.html">Inicio</a>
-    <a href="crear-evento.html">Crear Evento</a>
-    <a href="favoritos.html" class="active">Favoritos</a>
-    <a href="perfil.html">Perfil</a>
+    <div class="nav-center">
+      <a href="inicio.html">Inicio</a>
+      <a href="crear-evento.html">Crear Evento</a>
+      <a href="favoritos.html" class="active">Favoritos</a>
+      <a href="perfil.html">Perfil</a>
+    </div>
+    <div class="nav-right">
+      <a href="#" class="nav-logout-btn" id="nav-cerrar-sesion" style="display: none;">Cerrar Sesión</a>
+      <button class="nav-menu-btn-inline" aria-label="Menú opciones">&#8942;</button>
+    </div>
   </nav>
   <main class="main-container">
     <h1 class="inicio-titulo">Mis Favoritos</h1>
@@ -32,10 +39,7 @@
   <footer class="footer-tfi">
     TFI INGENIERIA EN SISTEMAS DE INFORMACION 2025. AUTORES : MAROSECK YELENKA Y RUIZ DIAZ LUCIANO
   </footer>
-  <script src="script/script.js"></script>
-  <!-- Firebase App (core) -->
-  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js"></script>
-  <!-- Firebase Firestore -->
-  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js"></script>
+  <script type="module" src="script/script.js"></script>
+  <!-- Solo se mantiene la referencia a script.js -->
 </body>
 </html>

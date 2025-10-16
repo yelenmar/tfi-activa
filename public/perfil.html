@@ -1,0 +1,151 @@
+<!-- perfil.html -->
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Perfil - Activá</title>
+  <link rel="stylesheet" href="css/styles.css">
+  <meta name="firebase-config" content='{"apiKey":"AIzaSyAgufVX3sdXEzTJQC6ZTqv6Clh0Coo4A40","authDomain":"tfi-activa.firebaseapp.com","projectId":"tfi-activa","storageBucket":"tfi-activa.firebasestorage.app","messagingSenderId":"459768332837","appId":"1:459768332837:web:e28594decec0743631b5cc","measurementId":"G-5944BHTK50"}'>
+</head>
+<body>
+  <header class="header-principal">
+    <div class="header-content">
+      <a href="inicio.html">
+        <img src="img/Acti-removebg-preview.png" alt="Símbolo Acti" class="header-simbolo-izq">
+      </a>
+      <a href="inicio.html">
+        <img src="img/LOGO-removebg-preview.png" alt="Logo principal Activá" class="header-logo-centro">
+      </a>
+    </div>
+  </header>
+  <nav class="nav-bar nav-lila">
+    <div class="nav-center">
+      <a href="inicio.html">Inicio</a>
+      <a href="crear-evento.html">Crear Evento</a>
+      <a href="favoritos.html">Favoritos</a>
+      <a href="perfil.html" class="active">Perfil</a>
+    </div>
+    <div class="nav-right">
+      <a href="#" class="nav-logout-btn" id="nav-cerrar-sesion" style="display: none;">Cerrar Sesión</a>
+      <button class="nav-menu-btn-inline" aria-label="Menú opciones">&#8942;</button>
+    </div>
+  </nav>
+  <main class="main-container">
+    <!-- La verificación de sesión se realiza desde script.js -->
+    <div class="code-box perfil-box">
+      <div class="perfil-header-row">
+        <div class="perfil-foto-col">
+          <img id="perfil-foto" src="img/perfil-default.png" alt="Foto de perfil" class="perfil-foto-grande">
+        </div>
+        <div class="perfil-datos-col">
+          <div class="perfil-nombre-row">
+            <h2 id="perfil-nombre" class="perfil-nombre"></h2>
+            <button id="btn-editar-perfil" class="btn-perfil-dots" title="Editar perfil">⋮</button>
+          </div>
+          <div class="perfil-datos-row">
+            <span id="perfil-sexo"></span>
+            <span id="perfil-edad"></span>
+          </div>
+          <p id="perfil-descripcion" class="perfil-descripcion" style="display:none;"></p>
+        </div>
+      </div>
+  <form id="perfil-form" class="perfil-form" style="display:none;" autocomplete="off">
+        <div class="perfil-form-foto-centro">
+          <img id="perfil-foto-form" src="img/perfil-default.png" alt="Foto de perfil">
+          <button type="button" id="btn-cambiar-foto" class="btn-base btn-secondary">Cambiar foto</button>
+          <input type="file" id="foto-perfil" accept="image/*" style="display:none;">
+        </div>
+        <div class="perfil-row-doble">
+          <div>
+            <label for="nombre">Nombre</label>
+            <input type="text" id="nombre" name="nombre" required>
+          </div>
+          <div>
+            <label for="apellido">Apellido</label>
+            <input type="text" id="apellido" name="apellido" required>
+          </div>
+        </div>
+        <div class="perfil-fila-sexo-edad">
+          <div class="perfil-campo-sexo">
+            <label for="sexo">Sexo</label>
+            <select id="sexo" name="sexo" required>
+              <option value="">Selecciona...</option>
+              <option value="Femenino">Femenino</option>
+              <option value="Masculino">Masculino</option>
+              <option value="Otro">Otro</option>
+            </select>
+          </div>
+          <div class="perfil-campo-edad">
+            <label for="edad">Edad</label>
+            <input type="text" id="edad" name="edad" pattern="[0-9]+" inputmode="numeric" placeholder="Ej: 25" required>
+          </div>
+        </div>
+  <label for="perfil-descripcion-input">Descripción</label>
+  <textarea id="perfil-descripcion-input" name="perfil-descripcion" rows="2" placeholder="Contanos algo sobre vos..."></textarea>
+        <button type="submit" class="btn-base btn-primary">Guardar perfil</button>
+      </form>
+      <h3 class="perfil-eventos-titulo">Historial de Eventos</h3>
+      <section id="eventos-historial">
+        <div class="historial-tabs">
+          <button class="historial-tab btn-base btn-secondary active" data-tipo="todos">Todos</button>
+          <button class="historial-tab btn-base btn-secondary" data-tipo="creado">Creados</button>
+          <button class="historial-tab btn-base btn-secondary" data-tipo="unido">Unidos</button>
+          <button class="historial-tab btn-base btn-secondary" data-tipo="finalizado">Finalizados</button>
+        </div>
+        <div id="historial-content">
+          <p style="color:#888;">Cargando historial...</p>
+        </div>
+      </section>
+
+      <!-- Modal edición de evento -->
+      <div id="modal-editar-evento" class="modal" style="display:none;">
+        <div class="modal-content">
+          <h3>Editar evento</h3>
+          <form id="form-editar-evento" autocomplete="off">
+            <input type="hidden" id="edit-evento-id">
+            <label for="edit-titulo">Título</label>
+            <input id="edit-titulo" type="text" required>
+            <label for="edit-descripcion">Descripción</label>
+            <textarea id="edit-descripcion" rows="3" required></textarea>
+            <div class="perfil-fila-sexo-edad">
+              <div>
+                <label for="edit-fecha">Fecha</label>
+                <input id="edit-fecha" type="date" required>
+              </div>
+              <div>
+                <label for="edit-hora">Hora</label>
+                <input id="edit-hora" type="time" required>
+              </div>
+            </div>
+            <label for="edit-ubicacion">Ubicación</label>
+            <input id="edit-ubicacion" type="text" required>
+            <label for="edit-maxPersonas">Cupo máximo</label>
+            <input id="edit-maxPersonas" type="text" inputmode="numeric" pattern="[0-9]+" placeholder="Ej: 10" required>
+            <div class="modal-actions">
+              <button type="button" id="btn-cancelar-edicion" class="btn-base btn-secondary">Cancelar</button>
+              <button type="submit" class="btn-base btn-primary">Guardar</button>
+            </div>
+          </form>
+        </div>
+      </div>
+
+      <!-- Modal confirmación de borrado -->
+      <div id="modal-confirmar-borrado" class="modal" style="display:none;">
+        <div class="modal-content">
+          <h3>Eliminar evento</h3>
+          <p>¿Seguro que querés borrar este evento? Esta acción es permanente.</p>
+          <div class="modal-actions">
+            <button type="button" id="btn-cancelar-borrado" class="btn-base btn-secondary">Cancelar</button>
+            <button type="button" id="btn-confirmar-borrado" class="btn-base btn-danger">Borrar definitivamente</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </main>
+  <footer class="footer-tfi">
+    TFI INGENIERIA EN SISTEMAS DE INFORMACION 2025. AUTORES : MAROSECK YELENKA Y RUIZ DIAZ LUCIANO
+  </footer>
+  <script type="module" src="script/script.js"></script>
+  <!-- Solo se mantiene la referencia a script.js -->
+</body>
+</html>
