@@ -4,15 +4,13 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Inicio - Activá</title>
+  <link rel="icon" type="image/png" href="img/Acti-removebg-preview.png">
   <link rel="stylesheet" href="css/styles.css">
   <meta name="firebase-config" content='{"apiKey":"AIzaSyAgufVX3sdXEzTJQC6ZTqv6Clh0Coo4A40","authDomain":"tfi-activa.firebaseapp.com","projectId":"tfi-activa","storageBucket":"tfi-activa.firebasestorage.app","messagingSenderId":"459768332837","appId":"1:459768332837:web:e28594decec0743631b5cc","measurementId":"G-5944BHTK50"}'>
 </head>
 <body>
-  <header class="header-principal">
+  <header class="header-principal" style="position: relative;">
     <div class="header-content">
-      <a href="inicio.html">
-        <img src="img/Acti-removebg-preview.png" alt="Símbolo Acti" class="header-simbolo-izq">
-      </a>
       <a href="inicio.html">
         <img src="img/LOGO-removebg-preview.png" alt="Logo principal Activá" class="header-logo-centro">
       </a>
@@ -32,32 +30,16 @@
   </nav>
   <main class="main-container">
     <!-- La verificación de sesión se realiza desde script.js -->
-    <div class="fondo-animado">
-      <span class="emoji emoji1">🎾</span>
-      <span class="emoji emoji2">⚽</span>
-      <span class="emoji emoji3">🎸</span>
-      <span class="emoji emoji4">🎨</span>
-      <span class="emoji emoji5">📷</span>
-      <span class="emoji emoji6">🍕</span>
-      <span class="emoji emoji7">🏃‍♂️</span>
-      <span class="emoji emoji8">🎤</span>
-      <span class="emoji emoji9">🏀</span>
-      <span class="emoji emoji10">🧩</span>
-      <span class="emoji emoji11">🍔</span>
-      <span class="emoji emoji12">🎭</span>
-      <span class="emoji emoji13">🎹</span>
-      <span class="emoji emoji14">🏓</span>
-      <span class="emoji emoji15">🥗</span>
-      <span class="emoji emoji16">🎬</span>
-      <span class="emoji emoji17">🎯</span>
-      <span class="emoji emoji18">🏐</span>
-    </div>
+    <div class="fondo-animado"></div>
     <h1 class="inicio-titulo">Todos los Eventos</h1>
     <p class="inicio-subtitulo">
       Descubre actividades, eventos y personas que comparten tus intereses.
     </p>
     <div class="buscador-eventos">
-      <input type="text" id="buscador" placeholder="Buscar eventos por título, descripción o etiquetas...">
+      <div class="buscador-input-wrapper">
+  <input type="text" id="buscador" placeholder="Buscar por título, descripción, ubicación u organizador..." autocomplete="off" autocorrect="off" spellcheck="false">
+        <img src="img/buscar.png" alt="Buscar" class="icono-buscar">
+      </div>
     </div>
     <!-- Todos los eventos con el mismo estilo, sin categorías ni tags -->
     <section id="eventos-lista">

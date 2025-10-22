@@ -194,25 +194,129 @@ document.addEventListener("DOMContentLoaded", () => {
     dotsContainer.addEventListener('mouseleave', () => { intervalo = setInterval(siguienteImagen, 3000); });
   }
 
-  // 2) Fondo animado de emojis (si existe contenedor)
-  const fondo = $('.fondo-animado');
-  if (fondo) {
-    const emojis = ["🎾","⚽","🎸","🎨","📷","🍕","🏃‍♂️","🎤","🏀","🧩","🍔","🎭","🎹","🏓","🥗","🎬","🎯","🏐","🎲","🎪","🎨","📚","🎵","⚡","🌟","💫","🎮","🚴‍♀️","🏊‍♂️","🧘‍♀️","🎺","🎻","🥊","🏸","⛹️‍♂️","🤸‍♀️","🕺","💃","🎪","🎨","🖼️","🎭","🎪","🎨","🎹","🎸","🥁","🎤","🎧","📸","📹","🎬","📚","✍️","🧑‍🍳","👨‍🍳","🍳","🥘","🍝","🍕","🍰","☕","🍷","🧑‍🎨","👩‍🎨","🖌️","🖍️"];
-    fondo.innerHTML = '';
-    for (let i = 0; i < 45; i++) {
-      const emoji = document.createElement('span');
-      emoji.className = 'emoji emoji-static';
-      emoji.textContent = emojis[Math.floor(Math.random() * emojis.length)];
-      emoji.style.left = (Math.random() * 90) + '%';
-      emoji.style.top = (Math.random() * 85) + '%';
-      emoji.style.fontSize = (Math.random() * 0.8 + 1.2) + 'rem';
-      emoji.style.opacity = (0.12 + Math.random() * 0.08).toString();
-      const duracion = Math.random() * 6 + 8;
-      emoji.style.animationDuration = duracion + 's';
-      emoji.style.animationDelay = (Math.random() * -8) + 's';
-      fondo.appendChild(emoji);
+  // 2) Fondo animado con íconos (si existe contenedor)
+  const fondos = $$('.fondo-animado');
+  fondos.forEach(fondo => {
+    const iconos = [
+      'cafe-con-leche-matcha.png','camara-fotografica.png','campamento-nocturno.png','camping-table.png','cocinando.png','corredor.png','deporte.png','ejercicios-de-estiramiento.png','frito.png','guitarra-electrica.png','juego (1).png','juego (2).png','juego (3).png','juego (4).png','juego.png','jugador-de-futbol.png','kayac.png','lectura.png','libro.png','linea.png','maquilladora.png','martini.png','microfono.png','origami.png','paleta-de-pintura.png','persona.png','piano (1).png','silla-de-playa.png','sillas.png','te-de-mate.png','teatro.png','tejido-de-punto.png','yoga (1).png','yoga.png'
+    ];
+    const basePath = 'img/fondo/';
+    let isRendering = false; // Flag para evitar renderizados simultáneos
+    
+    const getAlto = () => {
+      if (fondo.classList.contains('fondo-animado-header')) {
+        const header = document.querySelector('.header-principal');
+        return header ? header.offsetHeight : 120;
+      } else {
+        const main = document.querySelector('.main-container');
+        return (main && main.scrollHeight) || document.documentElement.scrollHeight || document.body.scrollHeight || window.innerHeight;
+      }
+    };
+    
+    const renderFondo = () => {
+      if (isRendering) return; // Evitar renderizados concurrentes
+      isRendering = true;
+      
+      const alto = getAlto();
+      fondo.style.height = alto + 'px';
+      
+      // Solo limpiar si hay contenido previo
+  const existingIcons = fondo.querySelectorAll('.bg-icon');
+  const needsUpdate = existingIcons.length === 0 || Math.abs(parseInt(fondo.dataset.lastHeight || '0') - alto) > 20;
+      
+      if (!needsUpdate) {
+        isRendering = false;
+        return;
+      }
+      
+      fondo.dataset.lastHeight = alto;
+      fondo.innerHTML = '';
+      
+      // Grilla más densa con más íconos
+      const filas = fondo.classList.contains('fondo-animado-header') ? 4 : Math.max(25, Math.ceil(alto / 40));
+      const columnas = 18; // Aumentado de 12 a 18 columnas
+      const cellW = 100 / columnas;
+      const cellH = alto / filas;
+      
+      let posiciones = [];
+      for (let f = 0; f < filas; f++) {
+        for (let c = 0; c < columnas; c++) {
+          posiciones.push({
+            left: c * cellW + cellW * (0.25 + Math.random() * 0.50),
+            top: f * cellH + cellH * (0.25 + Math.random() * 0.50)
+          });
+        }
+      }
+      posiciones = posiciones.sort(() => Math.random() - 0.5);
+      
+      // Aumentar cantidad de íconos para llenar mejor el espacio
+      const total = fondo.classList.contains('fondo-animado-header') 
+        ? Math.min(posiciones.length, 35) // Aumentado de 20 a 35 para header
+        : Math.min(posiciones.length, 150); // Aumentado de 80 a 150 para main
+      
+      // Crear fragmento para optimizar renderizado
+      const fragment = document.createDocumentFragment();
+      
+      for (let i = 0; i < total; i++) {
+        const img = document.createElement('img');
+        img.className = 'bg-icon';
+        img.src = basePath + iconos[i % iconos.length];
+        img.alt = '';
+        img.loading = 'lazy'; // Lazy loading para mejor rendimiento
+        const pos = posiciones[i];
+        img.style.left = pos.left + '%';
+        img.style.top = pos.top + 'px';
+        
+        // Variar el delay de animación para cada ícono
+        img.style.animationDelay = `-${Math.random() * 240}s`;
+        
+        fragment.appendChild(img);
+      }
+      
+      fondo.appendChild(fragment);
+      isRendering = false;
+    };
+    
+    // Renderizado inicial
+    renderFondo();
+    
+    // Re-renderizar después de un delay para asegurar que el main esté completamente cargado
+  setTimeout(renderFondo, 1500);
+  setTimeout(renderFondo, 3000);
+  setTimeout(renderFondo, 4500); // refuerzo extra para cargas lentas
+   
+    // Resize con debounce
+    let resizeTimeout;
+    window.addEventListener('resize', () => { 
+      clearTimeout(resizeTimeout); 
+      resizeTimeout = setTimeout(renderFondo, 300); 
+    });
+    
+    // Observer SOLO para eventos significativos en el main (evitar bucle infinito)
+    if (!fondo.classList.contains('fondo-animado-header')) {
+      const main = document.querySelector('.main-container');
+      if (main && window.MutationObserver) {
+        let observerTimeout;
+        const observer = new MutationObserver((mutations) => {
+          // Solo re-renderizar si se agregaron/eliminaron eventos (no por cambios internos del fondo)
+          const relevantChange = mutations.some(m => {
+            return m.addedNodes.length > 0 || m.removedNodes.length > 0;
+          });
+          
+          if (relevantChange && !isRendering) {
+            clearTimeout(observerTimeout);
+            observerTimeout = setTimeout(renderFondo, 500);
+          }
+        });
+        
+        // Observar solo el contenedor de eventos, no todo el main
+        const eventosLista = document.getElementById('eventos-lista');
+        if (eventosLista) {
+          observer.observe(eventosLista, { childList: true, subtree: false });
+        }
+      }
     }
-  }
+  });
 
   // 3) Registro y verificación (registro.html)
   (function registroFlow(){
@@ -692,12 +796,16 @@ document.addEventListener("DOMContentLoaded", () => {
         if (!organizerName) organizerName = userIdAuth;
         if (!organizerPhoto) organizerPhoto = 'img/perfil-default.png';
 
+        // Obtener datos del formulario
+        const linkGrupo = formData.get('link-grupo')?.trim() || '';
+
         const evento = {
           titulo: formData.get('titulo'),
           descripcion: formData.get('descripcion'),
           fecha: fechaEvento,
           hora: horaEvento,
           ubicacion: formData.get('ubicacion'),
+          linkGrupo: linkGrupo,
           maxPersonas: parseInt(formData.get('max-personas')),
           unidos: 1, // El organizador cuenta como unido
           organizador: organizerName,
@@ -776,12 +884,19 @@ document.addEventListener("DOMContentLoaded", () => {
 
           const card = document.createElement('div');
           card.className = 'favoritos-card-evento';
+          const linkGrupoFavRow = (evento.linkGrupo && String(evento.linkGrupo).trim())
+            ? `<div class="favoritos-link-grupo-row" style="margin:6px 0 2px 0; display:block;">
+                 <span style="font-weight:600; color: var(--green-dark); margin-right:6px; font-size: 1.08em; font-style: italic;">Link de grupo:</span>
+                 <a href="${evento.linkGrupo}" target="_blank" rel="noopener noreferrer" style="color: var(--violet); font-size: 1.08em; font-style: italic; word-break: break-all; text-decoration: none;">${evento.linkGrupo}</a>
+               </div>`
+            : '';
           card.innerHTML = `
-            <div style="display: flex; justify-content: space-between; align-items: center;">
-              <h2 class="favoritos-titulo-evento" style="margin-bottom: 0;">${evento.titulo || ''}</h2>
-                ${(yaParticipa || isOrganizadorFav) ? '<span class="evento-participando-badge">Participando</span>' : ''}
+            <div class="favoritos-titulo-row">
+              <h2 class="favoritos-titulo-evento">${evento.titulo || ''}</h2>
+              ${(yaParticipa || isOrganizadorFav) ? '<span class="evento-participando-badge">Participando</span>' : ''}
             </div>
             <p class="favoritos-descripcion-evento">${evento.descripcion || ''}</p>
+            ${linkGrupoFavRow}
             <div class="favoritos-detalles-evento">
               <span><img src="img/calendario.png" alt="Fecha" class="icono-evento"> ${evento.fecha || ''}</span>
               <span><img src="img/reloj-circular.png" alt="Hora" class="icono-evento"> ${evento.hora || ''}</span>
@@ -794,8 +909,12 @@ document.addEventListener("DOMContentLoaded", () => {
                 <span class="favoritos-organizador-nombre">${organizadorLabel(evento.organizador)}</span>
               </div>
               <div class="favoritos-actions">
-                <button class="favoritos-btn-quitar" data-evento-id="${fav.eventoId}">Quitar</button>
-                <button class="favoritos-btn-compartir" data-evento-id="${fav.eventoId}"><img src="img/logo-compartir.png" alt="Compartir" class="icono-evento"></button>
+                <button class="inicio-btn-favorito-nuevo active" data-evento-id="${fav.eventoId}" aria-pressed="true" aria-label="Quitar de favoritos">
+                  <img src="img/logo-estrella.png" alt="Favorito" class="icono-evento" />
+                </button>
+                <button class="inicio-btn-compartir-nuevo" data-evento-id="${fav.eventoId}">
+                  <img src="img/logo-compartir.png" alt="Compartir" class="icono-evento" />
+                </button>
                 ${isOrganizadorFav ? '' : (yaParticipa ? `<button class=\"favoritos-btn-salir\" data-evento-id=\"${fav.eventoId}\">No participar</button>` : `<button class=\"favoritos-btn-unirse\" data-evento-id=\"${fav.eventoId}\">Unirse</button>`)}
               </div>
             </div>`;
@@ -808,20 +927,77 @@ document.addEventListener("DOMContentLoaded", () => {
   }
   
   function organizadorLabel(nombre){
-    if (!nombre) return '';
-    return `👤 <b>Organizado por</b><br>${nombre}`;
+  if (!nombre) return '';
+  return `<b>Organizado por</b><br>${nombre}`;
   }
 
-  // 8) Buscador en inicio.html
+  // 8) Buscador en tiempo real en inicio.html
   const buscador = $('#buscador');
   if (buscador) {
-    const cards = $$('.inicio-card-evento');
+    const eventosLista = $('#eventos-lista');
+    let timeoutBusqueda;
+    
+    // Crear mensaje "sin resultados" dinámicamente
+    const mensajeSinResultados = document.createElement('div');
+    mensajeSinResultados.id = 'sin-resultados-busqueda';
+    mensajeSinResultados.style.display = 'none';
+    mensajeSinResultados.innerHTML = `
+      <div style="text-align: center; padding: 3em 2em; background: #f7fbf9; border-radius: 10px; margin: 2em auto; max-width: 600px; border: 1.5px solid #e0e0e0;">
+        <h3 style="color: #003918; margin-bottom: 0.5em; font-size: 1.4em;">🔍 No se encontraron eventos</h3>
+        <p style="color: #2d5f3f; margin-bottom: 1.5em; font-size: 1.05em;">No hay eventos que coincidan con "<span id="termino-busqueda" style="font-weight: bold;"></span>"</p>
+        <a href="crear-evento.html" style="display: inline-block; background: #003918; color: #fff; padding: 0.7em 1.8em; border-radius: 8px; text-decoration: none; font-weight: bold; transition: background 0.2s;">
+          ¡Crea el primer evento!
+        </a>
+      </div>
+    `;
+    
+    if (eventosLista) {
+      eventosLista.appendChild(mensajeSinResultados);
+    }
+    
     buscador.addEventListener('input', () => {
-      const q = buscador.value.trim().toLowerCase();
-      cards.forEach(c => {
-        const texto = c.textContent.toLowerCase();
-        c.style.display = texto.includes(q) ? '' : 'none';
-      });
+      clearTimeout(timeoutBusqueda);
+      
+      // Pequeño delay para evitar búsquedas excesivas mientras escribe
+      timeoutBusqueda = setTimeout(() => {
+        const query = buscador.value.trim().toLowerCase();
+        const cards = $$('.inicio-card-evento');
+        let eventosVisibles = 0;
+        
+        cards.forEach(card => {
+          if (!query) {
+            // Si no hay búsqueda, mostrar todos
+            card.style.display = '';
+            eventosVisibles++;
+          } else {
+            // Buscar en título, descripción y ubicación
+            const titulo = card.querySelector('.inicio-titulo-evento')?.textContent.toLowerCase() || '';
+            const descripcion = card.querySelector('.inicio-descripcion-evento')?.textContent.toLowerCase() || '';
+            const ubicacion = card.querySelector('.inicio-detalles-evento')?.textContent.toLowerCase() || '';
+            const organizador = card.querySelector('.inicio-organizador-nombre')?.textContent.toLowerCase() || '';
+            
+            const coincide = titulo.includes(query) || 
+                           descripcion.includes(query) || 
+                           ubicacion.includes(query) ||
+                           organizador.includes(query);
+            
+            if (coincide) {
+              card.style.display = '';
+              eventosVisibles++;
+            } else {
+              card.style.display = 'none';
+            }
+          }
+        });
+        
+        // Mostrar/ocultar mensaje de "sin resultados"
+        if (query && eventosVisibles === 0) {
+          mensajeSinResultados.style.display = 'block';
+          document.getElementById('termino-busqueda').textContent = query;
+        } else {
+          mensajeSinResultados.style.display = 'none';
+        }
+      }, 300); // 300ms de delay
     });
   }
 
@@ -989,6 +1165,24 @@ document.addEventListener("DOMContentLoaded", () => {
     return normalizados;
   };
   
+  // Sincroniza el estado visual de favoritos según la BD del usuario actual
+  const marcarFavoritosUsuario = async () => {
+    const userId = localStorage.getItem('userId') || localStorage.getItem('currentUserId');
+    if (!userId) return;
+    try {
+      const favs = await getFromFirestore('favoritos');
+      const setFav = new Set((favs || []).filter(f => f.userId === userId).map(f => f.eventoId));
+      document.querySelectorAll('.inicio-btn-favorito-nuevo').forEach((btn) => {
+        const id = btn.getAttribute('data-evento-id');
+        const active = setFav.has(id);
+        btn.classList.toggle('active', active);
+        btn.setAttribute('aria-pressed', active ? 'true' : 'false');
+      });
+    } catch (e) {
+      console.warn('⚠️ No se pudieron sincronizar favoritos UI:', e);
+    }
+  };
+  
   // ✅ PAGINACIÓN DE EVENTOS (Prioridad BAJA)
   let paginaActualInicio = 1;
   const EVENTOS_POR_PAGINA = 10;
@@ -1070,17 +1264,24 @@ document.addEventListener("DOMContentLoaded", () => {
           const fechaFormateada = formatearFecha(evento.fecha || (construirFechaHora(evento) ? `${construirFechaHora(evento).getFullYear()}-${pad2(construirFechaHora(evento).getMonth()+1)}-${pad2(construirFechaHora(evento).getDate())}` : ''));
           const dEvt = construirFechaHora(evento);
           const horaFormateada = formatearHora(evento.hora || (dEvt ? `${pad2(dEvt.getHours())}:${pad2(dEvt.getMinutes())}` : ''));
+          const linkGrupoRow = (evento.linkGrupo && String(evento.linkGrupo).trim())
+            ? `<div class="inicio-link-grupo-row" style="margin:6px 0 2px 0; display:block;">
+                 <span style="font-weight:600; color: var(--green-dark); margin-right:6px; font-size: 1.08em; font-style: italic;">Link de grupo:</span>
+                 <a href="${evento.linkGrupo}" target="_blank" rel="noopener noreferrer" style="color: var(--violet); font-size: 1.08em; font-style: italic; word-break: break-all; text-decoration: none;">${evento.linkGrupo}</a>
+               </div>`
+            : '';
 
           const eventoCard = document.createElement('div');
           eventoCard.className = 'inicio-card-evento';
           eventoCard.dataset.eventoId = evento.id;
 
           eventoCard.innerHTML = `
-            <div style="display: flex; justify-content: space-between; align-items: center;">
-              <h2 class="inicio-titulo-evento" style="margin-bottom: 0;">${evento.titulo}</h2>
+            <div class="inicio-titulo-row">
+              <h2 class="inicio-titulo-evento">${evento.titulo}</h2>
               ${(yaParticipa || isOrganizador) ? '<span class="evento-participando-badge">Participando</span>' : ''}
             </div>
             <p class="inicio-descripcion-evento">${evento.descripcion}</p>
+            ${linkGrupoRow}
             <div class="inicio-detalles-evento">
               <span><img src="img/calendario.png" alt="Fecha" class="icono-evento" /> ${fechaFormateada}</span>
               <span><img src="img/reloj-circular.png" alt="Hora" class="icono-evento" /> ${horaFormateada}</span>
@@ -1097,15 +1298,15 @@ document.addEventListener("DOMContentLoaded", () => {
                 <span class="inicio-organizador-nombre"><b>Organizado por</b><br>${evento.organizador}</span>
               </div>
               <div class="evento-actions">
-                <button class="inicio-btn-favorito-nuevo" data-evento-id="${evento.id}">
+                <button class="inicio-btn-favorito-nuevo" data-evento-id="${evento.id}" aria-pressed="false" aria-label="Marcar como favorito">
                   <img src="img/logo-estrella.png" alt="Favorito" class="icono-evento" />
                 </button>
                 <button class="inicio-btn-compartir-nuevo" data-evento-id="${evento.id}">
                   <img src="img/logo-compartir.png" alt="Compartir" class="icono-evento" />
                 </button>
-                ${isOrganizador ? `<button class=\"inicio-btn-organizador\" disabled>Organizador</button>` : ''}
-                ${(!isOrganizador && !yaParticipa) ? `<button class=\"inicio-btn-unirse-nuevo\" data-evento-id=\"${evento.id}\">Unirse</button>` : ''}
-                ${(!isOrganizador && yaParticipa) ? `<button class=\"inicio-btn-salir-nuevo\" data-evento-id=\"${evento.id}\">No participar</button>` : ''}
+                ${isOrganizador ? `<button class="inicio-btn-organizador" disabled>Organizador</button>` : ''}
+                ${(!isOrganizador && !yaParticipa) ? `<button class="inicio-btn-unirse-nuevo" data-evento-id="${evento.id}">Unirse</button>` : ''}
+                ${(!isOrganizador && yaParticipa) ? `<button class="inicio-btn-salir-nuevo" data-evento-id="${evento.id}">No participar</button>` : ''}
               </div>
             </div>
           `;
@@ -1156,6 +1357,8 @@ document.addEventListener("DOMContentLoaded", () => {
       
         // Re-bind event listeners para los nuevos elementos
         bindEventoButtons();
+        // Sincronizar estado visual de favoritos con BD
+        await marcarFavoritosUsuario();
       
       } catch (error) {
         console.error('Error cargando eventos:', error);
@@ -1413,6 +1616,7 @@ document.addEventListener("DOMContentLoaded", () => {
           try {
             btn.classList.toggle('active');
             const isActive = btn.classList.contains('active');
+            btn.setAttribute('aria-pressed', isActive ? 'true' : 'false');
           
             if (isActive) {
               // Agregar a favoritos
@@ -1432,7 +1636,8 @@ document.addEventListener("DOMContentLoaded", () => {
               await saveToFirestore('favoritos', favoritoData, `${userId}_${eventoId}`);
               mostrarMensajeExito('Agregado a favoritos');
             } else {
-              // Remover de favoritos (en implementación real eliminarías el documento)
+              // Remover de favoritos de Firestore
+              await deleteFromFirestore('favoritos', `${userId}_${eventoId}`);
               mostrarMensajeExito('Removido de favoritos');
             }
           } catch (error) {
@@ -1455,7 +1660,12 @@ document.addEventListener("DOMContentLoaded", () => {
           const base = window.location.origin + window.location.pathname.replace(/[^\/]+$/, 'inicio.html');
           const url = `${base}?evento=${encodeURIComponent(eventoId)}`;
           await navigator.clipboard.writeText(url);
+          // Efecto presionado temporal
+          btn.classList.add('pressed');
           mostrarMensajeExito('Link del evento copiado al portapapeles');
+          setTimeout(() => {
+            btn.classList.remove('pressed');
+          }, 900);
         } catch (err) {
           console.error('No se pudo copiar el link:', err);
           mostrarMensajeError('No se pudo copiar el link.');
@@ -1619,31 +1829,69 @@ document.addEventListener("DOMContentLoaded", () => {
       });
     });
 
-    // Quitar de favoritos
-    $$('.favoritos-btn-quitar').forEach((btn) => {
-      if (btn.dataset.bound) return; btn.dataset.bound = 'true';
+    // Botón de estrella (favoritos) en página de favoritos
+    document.querySelectorAll('.favoritos-card-evento .inicio-btn-favorito-nuevo').forEach((btn) => {
+      if (btn.dataset.bound) return;
+      btn.dataset.bound = 'true';
       btn.addEventListener('click', async () => {
         const eventoId = btn.dataset.eventoId;
         const userId = localStorage.getItem('userId') || localStorage.getItem('currentUserId');
-        if (!userId) { mostrarMensajeError('Debes iniciar sesión'); window.location.href = 'login.html'; return; }
+        
+        if (!userId) {
+          mostrarMensajeError('Debes iniciar sesión');
+          window.location.href = 'login.html';
+          return;
+        }
+        
         try {
-          btn.disabled = true; btn.textContent = 'Quitando…';
+          // En favoritos, siempre está activo, así que al hacer click se quita
+          btn.classList.remove('active');
+          btn.setAttribute('aria-pressed', 'false');
+          
           await deleteFromFirestore('favoritos', `${userId}_${eventoId}`);
           mostrarMensajeExito('Removido de favoritos');
-          // Eliminar card en vista de favoritos
+          
+          // Eliminar la card con animación
           const card = btn.closest('.favoritos-card-evento');
-          if (card) card.remove();
+          if (card) {
+            card.style.transition = 'opacity 0.3s ease';
+            card.style.opacity = '0';
+            setTimeout(() => card.remove(), 300);
+          }
+          
           // Desmarcar estrella en inicio (si existe)
-          document.querySelectorAll(`.inicio-btn-favorito-nuevo[data-evento-id="${eventoId}"]`).forEach(star => {
-            star.classList.remove('tachada');
+          document.querySelectorAll(`.inicio-card-evento .inicio-btn-favorito-nuevo[data-evento-id="${eventoId}"]`).forEach(star => {
+            star.classList.remove('active');
             star.setAttribute('aria-pressed', 'false');
           });
-        } catch (e) {
-          console.error(e);
-          mostrarMensajeError('No se pudo quitar de favoritos');
-        } finally {
-          btn.disabled = false; btn.textContent = 'Quitar';
-          bindFavoritosButtons();
+        } catch (error) {
+          console.error('Error al quitar de favoritos:', error);
+          mostrarMensajeError('Error al quitar de favoritos');
+          btn.classList.add('active'); // Revertir estado visual
+        }
+      });
+    });
+
+    // Botón de compartir en página de favoritos
+    document.querySelectorAll('.favoritos-card-evento .inicio-btn-compartir-nuevo').forEach((btn) => {
+      if (btn.dataset.bound) return;
+      btn.dataset.bound = 'true';
+      btn.addEventListener('click', async () => {
+        try {
+          const eventoId = btn.dataset.eventoId;
+          const base = window.location.origin + window.location.pathname.replace(/[^\/]+$/, 'inicio.html');
+          const url = `${base}?evento=${encodeURIComponent(eventoId)}`;
+          await navigator.clipboard.writeText(url);
+          
+          // Efecto presionado temporal
+          btn.classList.add('pressed');
+          mostrarMensajeExito('Link del evento copiado al portapapeles');
+          setTimeout(() => {
+            btn.classList.remove('pressed');
+          }, 900);
+        } catch (err) {
+          console.error('No se pudo copiar el link:', err);
+          mostrarMensajeError('No se pudo copiar el link.');
         }
       });
     });
@@ -1873,7 +2121,7 @@ document.addEventListener("DOMContentLoaded", () => {
           cacheHistorial = await cargarHistorial();
           const activeTab = document.querySelector('.historial-tab.active');
           const tipo = activeTab ? activeTab.getAttribute('data-tipo') : 'todos';
-          await renderHistorial(cacheHistorial, tipo);
+          renderHistorial(cacheHistorial, tipo);
         } catch (err) {
           console.error(err);
           mostrarMensajeError('No se pudo dejar de participar');
@@ -1881,54 +2129,42 @@ document.addEventListener("DOMContentLoaded", () => {
       });
     });
 
-    // Sistema de valoración con estrellas
-    historialContent.querySelectorAll('.estrellas-container').forEach(container => {
+    // Sistema de valoración con estrellas (rewritten for robustness)
+    historialContent.querySelectorAll('.estrellas-container').forEach((container) => {
       const estrellas = container.querySelectorAll('.estrella');
-      const eventoId = container.getAttribute('data-evento-id');
+      const eventoId = container.getAttribute('data-evento-id') || '';
       const btnEnviar = historialContent.querySelector(`.btn-enviar-valoracion[data-evento-id="${eventoId}"]`);
       let valorSeleccionado = 0;
 
-      estrellas.forEach(estrella => {
+      estrellas.forEach((estrella) => {
         // Hover effect
-        estrella.addEventListener('mouseenter', function() {
-          const valor = parseInt(this.getAttribute('data-valor'));
+        estrella.addEventListener('mouseenter', () => {
+          const valor = parseInt(estrella.getAttribute('data-valor') || '0', 10);
           estrellas.forEach((e, idx) => {
-            if (idx < valor) {
-              e.style.color = '#FFD700';
-              e.style.transform = 'scale(1.2)';
-            } else {
-              e.style.color = '#ddd';
-              e.style.transform = 'scale(1)';
-            }
+            const activo = idx < valor;
+            e.style.color = activo ? '#FFD700' : '#ddd';
+            e.style.transform = activo ? 'scale(1.2)' : 'scale(1)';
           });
         });
 
         // Click para seleccionar
-        estrella.addEventListener('click', function() {
-          valorSeleccionado = parseInt(this.getAttribute('data-valor'));
+        estrella.addEventListener('click', () => {
+          valorSeleccionado = parseInt(estrella.getAttribute('data-valor') || '0', 10);
           estrellas.forEach((e, idx) => {
-            if (idx < valorSeleccionado) {
-              e.style.color = '#FFD700';
-              e.classList.add('seleccionada');
-            } else {
-              e.style.color = '#ddd';
-              e.classList.remove('seleccionada');
-            }
+            const activo = idx < valorSeleccionado;
+            e.style.color = activo ? '#FFD700' : '#ddd';
+            if (activo) { e.classList.add('seleccionada'); } else { e.classList.remove('seleccionada'); }
           });
           if (btnEnviar) btnEnviar.style.display = 'inline-block';
         });
       });
 
       // Restaurar al salir
-      container.addEventListener('mouseleave', function() {
+      container.addEventListener('mouseleave', () => {
         estrellas.forEach((e, idx) => {
-          if (idx < valorSeleccionado) {
-            e.style.color = '#FFD700';
-            e.style.transform = 'scale(1)';
-          } else {
-            e.style.color = '#ddd';
-            e.style.transform = 'scale(1)';
-          }
+          const activo = idx < valorSeleccionado;
+          e.style.color = activo ? '#FFD700' : '#ddd';
+          e.style.transform = 'scale(1)';
         });
       });
 
@@ -1944,18 +2180,16 @@ document.addEventListener("DOMContentLoaded", () => {
           if (!userId) return;
 
           try {
-            const valoracionData = {
-              eventoId,
-              userId,
-              estrellas: valorSeleccionado,
-              fecha: new Date().toISOString()
-            };
-
-            await saveToFirestore('valoraciones', valoracionData, `${userId}_${eventoId}`);
+            await saveToFirestore(
+              'valoraciones',
+              { eventoId, userId, estrellas: valorSeleccionado, fecha: new Date().toISOString() },
+              `${userId}_${eventoId}`
+            );
             mostrarMensajeExito(`¡Valoración enviada: ${valorSeleccionado} estrellas!`);
-            
-            // Ocultar sistema de valoración
-            container.parentElement.innerHTML = `<p style="color:#4CAF50;font-size:0.9em;margin:8px 0;">✓ Tu valoración: ${'★'.repeat(valorSeleccionado)}${'☆'.repeat(5-valorSeleccionado)}</p>`;
+            // Ocultar sistema de valoración (evitar nested template literal issues)
+            const htmlValor = '<p style="color:#4CAF50;font-size:0.9em;margin:8px 0;">✓ Tu valoración: ' +
+              '★'.repeat(valorSeleccionado) + '☆'.repeat(5 - valorSeleccionado) + '</p>';
+            container.parentElement.innerHTML = htmlValor;
           } catch (err) {
             console.error(err);
             mostrarMensajeError('No se pudo enviar la valoración');
@@ -2007,15 +2241,15 @@ document.addEventListener("DOMContentLoaded", () => {
   if (historialContent) {
     (async () => {
       cacheHistorial = await cargarHistorial();
-      await renderHistorial(cacheHistorial, 'todos');
+      renderHistorial(cacheHistorial, 'todos');
 
       // Tabs de filtro
       document.querySelectorAll('.historial-tab').forEach(tab => {
-        tab.addEventListener('click', async () => {
+        tab.addEventListener('click', () => {
           document.querySelectorAll('.historial-tab').forEach(t => t.classList.remove('active'));
           tab.classList.add('active');
           const tipo = tab.getAttribute('data-tipo') || 'todos';
-          await renderHistorial(cacheHistorial, tipo);
+          renderHistorial(cacheHistorial, tipo);
         });
       });
 
@@ -2092,7 +2326,7 @@ document.addEventListener("DOMContentLoaded", () => {
             cacheHistorial = await cargarHistorial();
             const activeTab = document.querySelector('.historial-tab.active');
             const tipo = activeTab ? activeTab.getAttribute('data-tipo') : 'todos';
-            await renderHistorial(cacheHistorial, tipo);
+            renderHistorial(cacheHistorial, tipo);
           }
         });
       }
@@ -2204,6 +2438,11 @@ document.addEventListener("DOMContentLoaded", () => {
               inputHora.value = '';
             }
             inputUbicacion.value = ev.ubicacion || '';
+            
+            // Cargar link de grupo si existe
+            const editLinkGrupoInput = document.getElementById('edit-link-grupo');
+            if (editLinkGrupoInput) editLinkGrupoInput.value = ev.linkGrupo || '';
+            
             inputMax.value = ev.maxPersonas || 1;
 
             // Restringir fechas pasadas y, si es hoy, horas pasadas
@@ -2260,6 +2499,11 @@ document.addEventListener("DOMContentLoaded", () => {
             
             // Obtener evento actual y mantener campos que no se editan
             const eventoActual = await getFromFirestore('eventos', id);
+            
+            // Obtener datos del formulario
+            const editLinkGrupoInput = document.getElementById('edit-link-grupo');
+            const linkGrupo = editLinkGrupoInput?.value?.trim() || '';
+            
             const payload = {
               ...eventoActual,
               titulo: inputTitulo.value.trim(),
@@ -2267,6 +2511,7 @@ document.addEventListener("DOMContentLoaded", () => {
               fecha: fechaEdit,
               hora: horaEdit,
               ubicacion: inputUbicacion.value.trim(),
+              linkGrupo: linkGrupo,
               maxPersonas: parseInt(inputMax.value, 10) || 1,
               fechaHoraEvento: fh.toISOString()
             };
@@ -2278,7 +2523,7 @@ document.addEventListener("DOMContentLoaded", () => {
             cacheHistorial = await cargarHistorial();
             const activeTab = document.querySelector('.historial-tab.active');
             const tipo = activeTab ? activeTab.getAttribute('data-tipo') : 'todos';
-            await renderHistorial(cacheHistorial, tipo);
+            renderHistorial(cacheHistorial, tipo);
             bindEditarButtons();
           } catch (err) {
             console.error(err);

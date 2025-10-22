@@ -3,15 +3,13 @@
 <head>
   <meta charset="UTF-8">
   <title>Crear Evento - Activá</title>
+  <link rel="icon" type="image/png" href="img/Acti-removebg-preview.png">
   <link rel="stylesheet" href="css/styles.css">
   <meta name="firebase-config" content='{"apiKey":"AIzaSyAgufVX3sdXEzTJQC6ZTqv6Clh0Coo4A40","authDomain":"tfi-activa.firebaseapp.com","projectId":"tfi-activa","storageBucket":"tfi-activa.firebasestorage.app","messagingSenderId":"459768332837","appId":"1:459768332837:web:e28594decec0743631b5cc","measurementId":"G-5944BHTK50"}'>
 </head>
 <body>
   <header class="header-principal">
     <div class="header-content">
-      <a href="inicio.html">
-        <img src="img/Acti-removebg-preview.png" alt="Símbolo Acti" class="header-simbolo-izq">
-      </a>
       <a href="inicio.html">
         <img src="img/LOGO-removebg-preview.png" alt="Logo principal Activá" class="header-logo-centro">
       </a>
@@ -39,6 +37,9 @@
       <label for="descripcion" class="crear-evento-label-nueva">Descripción</label>
       <textarea id="descripcion" name="descripcion" required placeholder="Describe el evento..." class="crear-evento-textarea-nueva"></textarea>
 
+      <label for="link-grupo" class="crear-evento-label-nueva">Link de grupo (opcional)</label>
+      <input type="url" id="link-grupo" name="link-grupo" placeholder="Ej: https://t.me/mi-grupo o https://chat.whatsapp.com/xxx" class="crear-evento-input-nueva" pattern="https?://.+">
+
       <div class="crear-evento-row-triple-nueva">
         <div>
           <label for="fecha" class="crear-evento-label-nueva">Fecha</label>
@@ -55,7 +56,7 @@
       </div>
 
       <label for="ubicacion" class="crear-evento-label-nueva">Ubicación</label>
-      <input type="text" id="ubicacion" name="ubicacion" required placeholder="Ej: Cocina Comunitaria, Parque Central, etc." class="crear-evento-input-nueva">
+      <input type="text" id="ubicacion" name="ubicacion" required placeholder="Ej: Parque Central, Calle Principal 123, etc." class="crear-evento-input-nueva">
 
       <button type="submit" class="crear-evento-btn-nueva">Crear Evento</button>
     </form>

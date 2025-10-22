@@ -4,15 +4,13 @@
 <head>
   <meta charset="UTF-8">
   <title>Perfil - Activá</title>
+  <link rel="icon" type="image/png" href="img/Acti-removebg-preview.png">
   <link rel="stylesheet" href="css/styles.css">
   <meta name="firebase-config" content='{"apiKey":"AIzaSyAgufVX3sdXEzTJQC6ZTqv6Clh0Coo4A40","authDomain":"tfi-activa.firebaseapp.com","projectId":"tfi-activa","storageBucket":"tfi-activa.firebasestorage.app","messagingSenderId":"459768332837","appId":"1:459768332837:web:e28594decec0743631b5cc","measurementId":"G-5944BHTK50"}'>
 </head>
 <body>
   <header class="header-principal">
     <div class="header-content">
-      <a href="inicio.html">
-        <img src="img/Acti-removebg-preview.png" alt="Símbolo Acti" class="header-simbolo-izq">
-      </a>
       <a href="inicio.html">
         <img src="img/LOGO-removebg-preview.png" alt="Logo principal Activá" class="header-logo-centro">
       </a>
@@ -118,7 +116,9 @@
               </div>
             </div>
             <label for="edit-ubicacion">Ubicación</label>
-            <input id="edit-ubicacion" type="text" required>
+            <input id="edit-ubicacion" type="text" required placeholder="Ej: Parque Central, Calle Principal 123">
+            <label for="edit-link-grupo">Link de grupo (opcional)</label>
+            <input id="edit-link-grupo" type="url" placeholder="Ej: https://t.me/mi-grupo" pattern="https?://.+">
             <label for="edit-maxPersonas">Cupo máximo</label>
             <input id="edit-maxPersonas" type="text" inputmode="numeric" pattern="[0-9]+" placeholder="Ej: 10" required>
             <div class="modal-actions">
