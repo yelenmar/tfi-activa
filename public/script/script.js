@@ -80,6 +80,55 @@ const deleteFromFirestore = async (col, id) => {
 const $ = (selector) => document.querySelector(selector);
 const $$ = (selector) => document.querySelectorAll(selector);
 
+// Avatar gris por defecto (data URI SVG)
+const DEFAULT_AVATAR = "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><circle cx='50' cy='50' r='48' fill='%23e6e6e6'/><circle cx='50' cy='38' r='18' fill='%23bdbdbd'/><path d='M20 80c6-14 24-18 30-18s24 4 30 18' fill='%23bdbdbd'/></svg>";
+
+// Auth: guard de páginas protegidas
+(() => {
+  try {
+    const path = (location.pathname || '').toLowerCase();
+    const file = path.substring(path.lastIndexOf('/') + 1) || 'index.html';
+    const publicPages = ['index.html', 'login.html', 'registro.html'];
+    const isProtected = !publicPages.includes(file);
+    const userId = localStorage.getItem('userId') || localStorage.getItem('currentUserId');
+
+    // Si es pública y ya hay sesión, redirigir a inicio (login/registro)
+    if (!isProtected) {
+      if (userId && (file === 'login.html' || file === 'registro.html')) {
+        location.replace('inicio.html');
+        return;
+      }
+      // Asegurar que el body no quede oculto por data-protected por error
+      if (document && document.body) document.body.removeAttribute('data-protected');
+      return;
+    }
+
+    // Páginas protegidas: si no hay sesión, ir a login
+    if (!userId) {
+      // body está oculto por CSS (data-protected)
+      location.replace('login.html');
+      return;
+    }
+
+    // Con sesión: mostrar contenido y boton de logout si existe
+    const showBody = () => {
+      try {
+        document.body && document.body.removeAttribute('data-protected');
+        const logout = document.getElementById('nav-cerrar-sesion');
+        if (logout) logout.style.display = 'inline';
+      } catch {}
+    };
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', showBody);
+    } else {
+      showBody();
+    }
+  } catch (e) {
+    console.error('Auth guard error:', e);
+    try { document.body && document.body.removeAttribute('data-protected'); } catch {}
+  }
+})();
+
 // Cargar EmailJS para envío de códigos por correo
 const loadEmailJS = () => {
   return new Promise((resolve, reject) => {
@@ -589,9 +638,12 @@ document.addEventListener("DOMContentLoaded", () => {
           fechaActualizacion: new Date().toISOString()
         };
         await saveToFirestore("perfiles", perfil, userId);
-          // Persistir datos útiles para otras pantallas
+          // Persistir datos útiles y caché para próximas visitas
           const nombreCompleto = [nombre, apellido].filter(Boolean).join(' ').trim();
           if (nombreCompleto) localStorage.setItem('currentUserName', nombreCompleto);
+          if (edad) localStorage.setItem('perfilEdad', String(edad));
+          if (sexo) localStorage.setItem('perfilSexo', sexo);
+          if (descripcion) localStorage.setItem('perfilDescripcion', descripcion);
           if (foto) localStorage.setItem('userPhoto', foto);
         mostrarMensajeExito("¡Perfil guardado exitosamente!");
         
@@ -608,55 +660,86 @@ document.addEventListener("DOMContentLoaded", () => {
     const loadPerfil = async () => {
       const userId = localStorage.getItem('currentUserId');
       if (!userId) return;
-      
-      // Buscar datos de usuario y perfil
-      const usuarioData = await getFromFirestore("usuarios", userId) || {};
-      const perfilData = await getFromFirestore("perfiles", userId) || {};
-      const perfilNombre = $("#perfil-nombre");
-      const perfilEdad = $("#perfil-edad");
-      const perfilSexo = $("#perfil-sexo");
-      const perfilDesc = $("#perfil-descripcion");
-      const perfilFoto = $("#perfil-foto");
 
-      // Datos actuales (perfil editado tiene prioridad)
-      const nombre = perfilData.nombre || usuarioData.nombre || "";
-      const apellido = perfilData.apellido || usuarioData.apellido || "";
-      const edad = perfilData.edad || usuarioData.edad || "";
-      const sexo = perfilData.sexo || usuarioData.sexo || "";
-      const descripcion = perfilData.descripcion || "";
-      const foto = perfilData.foto || "img/perfil-default.png";
+  const perfilNombre = document.getElementById('perfil-nombre');
+  const perfilEdad = document.getElementById('perfil-edad');
+  const perfilSexo = document.getElementById('perfil-sexo');
+  const perfilDesc = document.getElementById('perfil-descripcion');
+  const perfilFoto = document.getElementById('perfil-foto');
+  const perfilFotoFormEl = document.getElementById('perfil-foto-form');
 
-      // Mostrar datos en la vista
-      if (perfilNombre) perfilNombre.textContent = (nombre && apellido) ? `${nombre} ${apellido}` : (nombre || "Nombre Apellido");
-      if (perfilEdad) perfilEdad.textContent = edad ? `Edad: ${edad}` : "Edad: --";
-      if (perfilSexo) perfilSexo.textContent = sexo ? `Sexo: ${sexo}` : (perfilSexo.textContent || "Sexo: --");
-      if (perfilDesc) {
-        perfilDesc.textContent = descripcion ? descripcion : "Descripción: --";
-        perfilDesc.style.display = descripcion ? "block" : "none";
+      // Pintar instantáneamente desde caché
+      const cacheNombre = localStorage.getItem('currentUserName');
+      const cacheEdad = localStorage.getItem('perfilEdad');
+      const cacheSexo = localStorage.getItem('perfilSexo');
+      const cacheDesc = localStorage.getItem('perfilDescripcion');
+      const cacheFoto = localStorage.getItem('userPhoto');
+      if (perfilNombre && cacheNombre) perfilNombre.textContent = cacheNombre;
+      if (perfilEdad && cacheEdad) perfilEdad.textContent = `Edad: ${cacheEdad}`;
+      if (perfilSexo && cacheSexo) perfilSexo.textContent = `Sexo: ${cacheSexo}`;
+      if (perfilDesc && cacheDesc) { perfilDesc.textContent = cacheDesc; perfilDesc.style.display = 'block'; }
+      if (perfilFoto) {
+        perfilFoto.src = cacheFoto || DEFAULT_AVATAR;
+        perfilFoto.onerror = () => { perfilFoto.src = DEFAULT_AVATAR; };
       }
-      if (perfilFoto) perfilFoto.src = foto;
+      if (perfilFotoFormEl) {
+        perfilFotoFormEl.src = cacheFoto || DEFAULT_AVATAR;
+      }
 
-  // También sincronizar en localStorage para reutilizar en crear evento
-  const nombreCompleto = [nombre, apellido].filter(Boolean).join(' ').trim();
-  if (nombreCompleto) localStorage.setItem('currentUserName', nombreCompleto);
-  if (foto) localStorage.setItem('userPhoto', foto);
+      // Traer datos en paralelo
+      const [usuarioDataRaw, perfilDataRaw] = await Promise.all([
+        getFromFirestore('usuarios', userId),
+        getFromFirestore('perfiles', userId)
+      ]);
+      const usuarioData = usuarioDataRaw || {};
+      const perfilData = perfilDataRaw || {};
 
-      // Inicializar formulario de edición con los datos actuales, solo si existe el form de perfil
-  const perfilFormEl = document.getElementById('perfil-form');
-  if (perfilFormEl) {
-    const formNombre = perfilFormEl.querySelector('#nombre');
-    const formApellido = perfilFormEl.querySelector('#apellido');
-    const formEdad = perfilFormEl.querySelector('#edad');
-    const formSexo = perfilFormEl.querySelector('#sexo');
-  const formDesc = perfilFormEl.querySelector('#perfil-descripcion-input');
-    const formFoto = document.getElementById('perfil-foto-form');
-    if (formNombre) formNombre.value = nombre;
-    if (formApellido) formApellido.value = apellido;
-    if (formEdad) formEdad.value = edad;
-    if (formSexo) formSexo.value = sexo;
-    if (formDesc) formDesc.value = descripcion;
-    if (formFoto && foto) formFoto.src = foto;
-  }
+      const nombre = perfilData.nombre || usuarioData.nombre || '';
+      const apellido = perfilData.apellido || usuarioData.apellido || '';
+      const edad = perfilData.edad || usuarioData.edad || '';
+      const sexo = perfilData.sexo || usuarioData.sexo || '';
+      const descripcion = perfilData.descripcion || '';
+      const foto = perfilData.foto || usuarioData.foto || cacheFoto || DEFAULT_AVATAR;
+
+      // Actualizar UI con datos definitivos
+      if (perfilNombre) perfilNombre.textContent = (nombre && apellido) ? `${nombre} ${apellido}` : (nombre || 'Nombre Apellido');
+      if (perfilEdad) perfilEdad.textContent = edad ? `Edad: ${edad}` : 'Edad: --';
+      if (perfilSexo) perfilSexo.textContent = sexo ? `Sexo: ${sexo}` : (perfilSexo.textContent || 'Sexo: --');
+      if (perfilDesc) {
+        perfilDesc.textContent = descripcion ? descripcion : 'Descripción: --';
+        perfilDesc.style.display = descripcion ? 'block' : 'none';
+      }
+      if (perfilFoto) {
+        perfilFoto.src = foto || DEFAULT_AVATAR;
+      }
+      if (perfilFotoFormEl) {
+        perfilFotoFormEl.src = foto || DEFAULT_AVATAR;
+      }
+
+      // Actualizar caché para próximas visitas
+      const nombreCompleto = [nombre, apellido].filter(Boolean).join(' ').trim();
+      if (nombreCompleto) localStorage.setItem('currentUserName', nombreCompleto);
+      if (edad) localStorage.setItem('perfilEdad', String(edad));
+      if (sexo) localStorage.setItem('perfilSexo', sexo);
+      if (descripcion) localStorage.setItem('perfilDescripcion', descripcion);
+      if (foto) localStorage.setItem('userPhoto', foto);
+
+      // Inicializar formulario de edición con los datos actuales
+      const perfilFormEl = document.getElementById('perfil-form');
+      if (perfilFormEl) {
+        const formNombre = perfilFormEl.querySelector('#nombre');
+        const formApellido = perfilFormEl.querySelector('#apellido');
+        const formEdad = perfilFormEl.querySelector('#edad');
+        const formSexo = perfilFormEl.querySelector('#sexo');
+        const formDesc = perfilFormEl.querySelector('#perfil-descripcion-input');
+        const formFoto = perfilFormEl.querySelector('#perfil-foto-form');
+        if (formNombre) formNombre.value = nombre;
+        if (formApellido) formApellido.value = apellido;
+        if (formEdad) formEdad.value = edad;
+        if (formSexo) formSexo.value = sexo;
+        if (formDesc) formDesc.value = descripcion;
+        if (formFoto) formFoto.src = foto || DEFAULT_AVATAR;
+      }
     };
     // Solo ejecutar en la página de perfil
     if (document.getElementById('perfil-form')) {
@@ -668,8 +751,10 @@ document.addEventListener("DOMContentLoaded", () => {
     // Edición rápida en perfil.html
     const btnEditarFoto = $("#btn-editar-foto");
     const btnCambiarFoto = $("#btn-cambiar-foto");
+    const btnQuitarFoto = $("#btn-quitar-foto");
     const fotoInput = $("#foto-perfil");
     const fotoImgForm = $("#perfil-foto-form");
+    const perfilFoto = $("#perfil-foto");
     const btnEditarDesc = $("#btn-editar-desc");
     const btnGuardar = $("#btn-guardar");
 
@@ -680,8 +765,9 @@ document.addEventListener("DOMContentLoaded", () => {
         if (!file) return;
         const reader = new FileReader();
         reader.onload = (e) => {
-          if (fotoImgForm) fotoImgForm.src = e.target.result;
-          if (perfilFoto) perfilFoto.src = e.target.result;
+          const src = e.target.result;
+          if (fotoImgForm) fotoImgForm.src = src;
+          if (perfilFoto) perfilFoto.src = src;
           if (btnGuardar) btnGuardar.style.display = 'block';
         };
         reader.readAsDataURL(file);
@@ -695,6 +781,15 @@ document.addEventListener("DOMContentLoaded", () => {
     if (btnCambiarFoto && fotoInput) {
       btnCambiarFoto.addEventListener('click', () => fotoInput.click());
       bindFotoChange();
+    }
+
+    if (btnQuitarFoto) {
+      btnQuitarFoto.addEventListener('click', () => {
+        if (fotoImgForm) fotoImgForm.src = DEFAULT_AVATAR;
+        if (perfilFoto) perfilFoto.src = DEFAULT_AVATAR;
+        if (fotoInput) fotoInput.value = '';
+        // No persistimos aún; se guarda al enviar el formulario
+      });
     }
 
     if (btnEditarDesc && perfilDesc && btnGuardar) {
@@ -765,36 +860,13 @@ document.addEventListener("DOMContentLoaded", () => {
         }
       
         // Validar que la fecha no sea en el pasado
-  const fechaHoraEvento = new Date(`${fechaEvento}T${horaEvento}`);
+        const fechaHoraEvento = new Date(`${fechaEvento}T${horaEvento}`);
         const ahora = new Date();
       
         if (fechaHoraEvento <= ahora) {
           mostrarMensajeError('La fecha y hora del evento debe ser futura');
           return;
         }
-
-        // Obtener nombre y foto desde perfil si están disponibles
-        let organizerName = localStorage.getItem('currentUserName') 
-          || localStorage.getItem('nombreCompleto') 
-          || localStorage.getItem('usuarioNombre') 
-          || '';
-        let organizerPhoto = localStorage.getItem('userPhoto') || '';
-
-        try {
-          if (!organizerName || !organizerPhoto) {
-            const perfil = await getFromFirestore('perfiles', userIdAuth);
-            if (perfil) {
-              const nombreCompuesto = [perfil.nombre, perfil.apellido].filter(Boolean).join(' ').trim();
-              if (!organizerName && nombreCompuesto) organizerName = nombreCompuesto;
-              if (!organizerPhoto && perfil.foto) organizerPhoto = perfil.foto;
-            }
-          }
-        } catch (e1) {
-          console.warn('No se pudo recuperar perfil para completar nombre/foto del organizador', e1);
-        }
-
-        if (!organizerName) organizerName = userIdAuth;
-        if (!organizerPhoto) organizerPhoto = 'img/perfil-default.png';
 
         // Obtener datos del formulario
         const linkGrupo = formData.get('link-grupo')?.trim() || '';
@@ -808,13 +880,11 @@ document.addEventListener("DOMContentLoaded", () => {
           linkGrupo: linkGrupo,
           maxPersonas: parseInt(formData.get('max-personas')),
           unidos: 1, // El organizador cuenta como unido
-          organizador: organizerName,
-          organizadorId: userIdAuth,
+          organizadorId: userIdAuth, // Solo guardamos el ID, los datos se consultan dinámicamente
           createdAt: new Date().toISOString(),
           fechaHoraEvento: fechaHoraEvento.toISOString(),
           participantes: [userIdAuth], // El organizador es el primer participante
-          activo: true,
-          fotoOrganizador: organizerPhoto
+          activo: true
         };
       
         try {
@@ -829,6 +899,10 @@ document.addEventListener("DOMContentLoaded", () => {
             fecha: evento.fecha,
             hora: evento.hora,
             ubicacion: evento.ubicacion,
+            linkGrupo: evento.linkGrupo,
+            maxPersonas: evento.maxPersonas,
+            unidos: evento.unidos,
+            organizadorId: evento.organizadorId, // Solo el ID, no datos estáticos
             fechaCreacion: new Date().toISOString()
           };
         
@@ -859,7 +933,7 @@ document.addEventListener("DOMContentLoaded", () => {
     const loadFavoritos = async () => {
       const userId = localStorage.getItem('currentUserId');
       if (!userId) {
-        favoritosLista.innerHTML = "<p style='text-align:center;'>Inicia sesión para ver tus favoritos.</p>";
+        favoritosLista.innerHTML = "<p class='centrado'>Inicia sesión para ver tus favoritos.</p>";
         return;
       }
       
@@ -868,13 +942,49 @@ document.addEventListener("DOMContentLoaded", () => {
       const misFavoritos = (favoritos || []).filter(f => f.userId === userId);
       
       if (!misFavoritos.length) {
-        favoritosLista.innerHTML = "<p style='text-align:center;'>No tienes eventos favoritos aún.</p>";
+        favoritosLista.innerHTML = "<p class='centrado'>No tienes eventos favoritos aún.</p>";
       } else {
+        // Funciones helper para formatear fecha y hora
+        const formatearFecha = (fechaStr) => {
+          const fecha = new Date(fechaStr);
+          const opciones = { day: '2-digit', month: '2-digit', year: 'numeric' };
+          return fecha.toLocaleDateString('es-ES', opciones);
+        };
+      
+        const formatearHora = (horaStr) => {
+          const [horas, minutos] = horaStr.split(':');
+          return `${horas}:${minutos}`;
+        };
+        
         favoritosLista.innerHTML = '';
+        const ahora = new Date();
+        
         for (const fav of misFavoritos) {
           // Obtener el evento vigente para datos actualizados
           const evento = await getFromFirestore('eventos', fav.eventoId);
           if (!evento) continue;
+
+          // Filtrar eventos que ya pasaron
+          const fechaEvento = construirFechaHora(evento);
+          if (!fechaEvento || ahora >= fechaEvento) continue;
+
+          // Obtener datos del organizador dinámicamente desde la BD
+          let nombreOrganizador = 'Desconocido';
+          let fotoOrganizador = 'img/PERFIL1.jpg';
+          
+          if (evento.organizadorId) {
+            try {
+              const perfilOrganizador = await getFromFirestore('perfiles', evento.organizadorId);
+              if (perfilOrganizador) {
+                nombreOrganizador = perfilOrganizador.nombre && perfilOrganizador.apellido 
+                  ? `${perfilOrganizador.nombre} ${perfilOrganizador.apellido}`
+                  : perfilOrganizador.nombre || nombreOrganizador;
+                fotoOrganizador = perfilOrganizador.foto || fotoOrganizador;
+              }
+            } catch (e) {
+              console.warn('No se pudo obtener perfil del organizador:', e);
+            }
+          }
 
           const unidos = Number(evento.unidos || 0);
           const max = Number(evento.maxPersonas || 0);
@@ -882,12 +992,18 @@ document.addEventListener("DOMContentLoaded", () => {
           const isOrganizadorFav = userId && evento.organizadorId && evento.organizadorId === userId;
           const yaParticipa = Array.isArray(evento.participantes) && evento.participantes.includes(userId);
 
+          // Formatear fecha y hora
+          const pad2 = (n) => String(n).padStart(2, '0');
+          const fechaFormateada = formatearFecha(evento.fecha || (construirFechaHora(evento) ? `${construirFechaHora(evento).getFullYear()}-${pad2(construirFechaHora(evento).getMonth()+1)}-${pad2(construirFechaHora(evento).getDate())}` : ''));
+          const horaFormateada = formatearHora(evento.hora || '');
+
           const card = document.createElement('div');
           card.className = 'favoritos-card-evento';
-          const linkGrupoFavRow = (evento.linkGrupo && String(evento.linkGrupo).trim())
-            ? `<div class="favoritos-link-grupo-row" style="margin:6px 0 2px 0; display:block;">
-                 <span style="font-weight:600; color: var(--green-dark); margin-right:6px; font-size: 1.08em; font-style: italic;">Link de grupo:</span>
-                 <a href="${evento.linkGrupo}" target="_blank" rel="noopener noreferrer" style="color: var(--violet); font-size: 1.08em; font-style: italic; word-break: break-all; text-decoration: none;">${evento.linkGrupo}</a>
+          // Link de grupo solo visible para participantes
+          const linkGrupoFavRow = (evento.linkGrupo && String(evento.linkGrupo).trim() && (yaParticipa || isOrganizadorFav))
+            ? `<div class="favoritos-link-grupo-row">
+                 <span class="texto-bold texto-verde texto-mediano texto-italic">Link de grupo:</span>
+                 <a href="${evento.linkGrupo}" target="_blank" rel="noopener noreferrer" class="texto-violeta texto-mediano texto-italic">${evento.linkGrupo}</a>
                </div>`
             : '';
           card.innerHTML = `
@@ -898,15 +1014,15 @@ document.addEventListener("DOMContentLoaded", () => {
             <p class="favoritos-descripcion-evento">${evento.descripcion || ''}</p>
             ${linkGrupoFavRow}
             <div class="favoritos-detalles-evento">
-              <span><img src="img/calendario.png" alt="Fecha" class="icono-evento"> ${evento.fecha || ''}</span>
-              <span><img src="img/reloj-circular.png" alt="Hora" class="icono-evento"> ${evento.hora || ''}</span>
+              <span><img src="img/calendario.png" alt="Fecha" class="icono-evento"> ${fechaFormateada}</span>
+              <span><img src="img/reloj-circular.png" alt="Hora" class="icono-evento"> ${horaFormateada}</span>
               <span><img src="img/ubicacion.png" alt="Ubicación" class="icono-evento"> ${evento.ubicacion || ''}</span>
               <span><img src="img/personas.png" alt="Participantes" class="icono-evento"> ${unidos}/${max} unidos <span class="evento-disponibles-texto">(${disponibles} lugares disponibles)</span></span>
             </div>
             <div class="favoritos-bottom-row">
               <div class="favoritos-organizador">
-                ${evento.fotoOrganizador ? `<img src="${evento.fotoOrganizador}" alt="Foto" class="favoritos-organizador-foto">` : '<img src="img/PERFIL1.jpg" alt="Perfil" class="favoritos-organizador-foto">'}
-                <span class="favoritos-organizador-nombre">${organizadorLabel(evento.organizador)}</span>
+                <img src="${fotoOrganizador}" alt="Foto organizador" class="favoritos-organizador-foto" onerror="this.src='img/PERFIL1.jpg'" />
+                <span class="favoritos-organizador-nombre">${organizadorLabel(nombreOrganizador)}</span>
               </div>
               <div class="favoritos-actions">
                 <button class="inicio-btn-favorito-nuevo active" data-evento-id="${fav.eventoId}" aria-pressed="true" aria-label="Quitar de favoritos">
@@ -920,15 +1036,21 @@ document.addEventListener("DOMContentLoaded", () => {
             </div>`;
           favoritosLista.appendChild(card);
         }
-        bindFavoritosButtons();
+        
+        // Mostrar mensaje si no hay eventos favoritos futuros
+        if (favoritosLista.children.length === 0) {
+          favoritosLista.innerHTML = "<p class='centrado'>No tienes eventos favoritos próximos.</p>";
+        } else {
+          bindFavoritosButtons();
+        }
       }
     };
     loadFavoritos();
   }
   
   function organizadorLabel(nombre){
-  if (!nombre) return '';
-  return `<b>Organizado por</b><br>${nombre}`;
+    if (!nombre) return '';
+    return `<b>Organizado por</b><br>${nombre}`;
   }
 
   // 8) Buscador en tiempo real en inicio.html
@@ -942,12 +1064,10 @@ document.addEventListener("DOMContentLoaded", () => {
     mensajeSinResultados.id = 'sin-resultados-busqueda';
     mensajeSinResultados.style.display = 'none';
     mensajeSinResultados.innerHTML = `
-      <div style="text-align: center; padding: 3em 2em; background: #f7fbf9; border-radius: 10px; margin: 2em auto; max-width: 600px; border: 1.5px solid #e0e0e0;">
-        <h3 style="color: #003918; margin-bottom: 0.5em; font-size: 1.4em;">🔍 No se encontraron eventos</h3>
-        <p style="color: #2d5f3f; margin-bottom: 1.5em; font-size: 1.05em;">No hay eventos que coincidan con "<span id="termino-busqueda" style="font-weight: bold;"></span>"</p>
-        <a href="crear-evento.html" style="display: inline-block; background: #003918; color: #fff; padding: 0.7em 1.8em; border-radius: 8px; text-decoration: none; font-weight: bold; transition: background 0.2s;">
-          ¡Crea el primer evento!
-        </a>
+      <div class="sin-resultados-busqueda centrado">
+        <h3 class="favoritos-titulo-grande">🔍 No se encontraron eventos</h3>
+        <p class="favoritos-descripcion-verde">No hay eventos que coincidan con "<span id="termino-busqueda" class="texto-bold"></span>"</p>
+        <a href="crear-evento.html" class="btn-crear-evento-vacio">¡Crea el primer evento!</a>
       </div>
     `;
     
@@ -1080,6 +1200,7 @@ document.addEventListener("DOMContentLoaded", () => {
       const d = new Date(evento.fechaHoraEvento);
       if (!isNaN(d.getTime())) return d;
     }
+    // Construir desde fecha/hora
     const f = normalizarFecha(evento?.fecha);
     const h = normalizarHora(evento?.hora);
     if (!f || !h) return null;
@@ -1087,1500 +1208,923 @@ document.addEventListener("DOMContentLoaded", () => {
     return isNaN(d.getTime()) ? null : d;
   };
 
-  // ✅ OPTIMIZACIÓN: Solo normalizar eventos con fechas inválidas (Prioridad MEDIA)
-  const normalizarEventosEnBD = async (eventos) => {
-    const ahora = new Date();
-    const normalizados = [];
-    let eventosModificados = 0;
-    
-    for (const e of (eventos || [])) {
-      let cambiado = false;
-      let fechaISO = normalizarFecha(e.fecha);
-      let horaISO = normalizarHora(e.hora);
-      let fechaHora = construirFechaHora({ ...e, fecha: fechaISO || e.fecha, hora: horaISO || e.hora });
-
-      // Si no hay fechaHora válida pero hay fechaHoraEvento ISO, usarla para derivar
-      if (!fechaHora && e.fechaHoraEvento) {
-        const d = new Date(e.fechaHoraEvento);
-        if (!isNaN(d.getTime())) {
-          fechaHora = d;
-          fechaISO = `${d.getFullYear()}-${pad2(d.getMonth()+1)}-${pad2(d.getDate())}`;
-          horaISO = `${pad2(d.getHours())}:${pad2(d.getMinutes())}`;
-          cambiado = true;
-        }
-      }
-
-      // Si aún faltan fecha/hora pero createdAt existe, no derivamos para evitar inconsistencias de negocio
-      if (!fechaISO || !horaISO) {
-        // mantener valores originales
-      }
-
-      // Asegurar fechaHoraEvento ISO consistente si tenemos fecha/hora
-      if ((!e.fechaHoraEvento || isNaN(new Date(e.fechaHoraEvento).getTime())) && fechaISO && horaISO) {
-        const d = new Date(`${fechaISO}T${horaISO}`);
-        if (!isNaN(d.getTime())) {
-          e.fechaHoraEvento = d.toISOString();
-          cambiado = true;
-        }
-      }
-
-      // Normalizar tipos de 'activo'
-      let activoValor = e.activo;
-      if (typeof activoValor === 'string') {
-        const s = activoValor.trim().toLowerCase();
-        activoValor = (s === 'true' || s === '1' || s === 'si' || s === 'sí');
-      } else {
-        activoValor = !!activoValor;
-      }
-
-      // No forzar activar si alguien lo desactivó manualmente. Solo activar por defecto si el campo falta.
-      if (e.activo === undefined && fechaHora && ahora < fechaHora) {
-        activoValor = true;
-        cambiado = true;
-      }
-
-      const actualizado = { ...e };
-      if (fechaISO && e.fecha !== fechaISO) { actualizado.fecha = fechaISO; cambiado = true; }
-      if (horaISO && e.hora !== horaISO) { actualizado.hora = horaISO; cambiado = true; }
-      if (actualizado.activo !== activoValor) { actualizado.activo = activoValor; cambiado = true; }
-
-      // ✅ OPTIMIZACIÓN: Solo guardar si hay cambios reales
-      if (cambiado) {
-        try { 
-          await saveToFirestore('eventos', actualizado, e.id);
-          eventosModificados++;
-        } catch (err) { 
-          console.warn('⚠️ No se pudo normalizar evento', e.id, err); 
-        }
-      }
-      normalizados.push(actualizado);
-    }
-    
-    if (eventosModificados > 0) {
-      console.log(`✅ ${eventosModificados} eventos normalizados en BD`);
-    } else {
-      console.log('✅ Todos los eventos ya están normalizados (sin escrituras redundantes)');
-    }
-    
-    return normalizados;
-  };
-  
-  // Sincroniza el estado visual de favoritos según la BD del usuario actual
-  const marcarFavoritosUsuario = async () => {
-    const userId = localStorage.getItem('userId') || localStorage.getItem('currentUserId');
-    if (!userId) return;
-    try {
-      const favs = await getFromFirestore('favoritos');
-      const setFav = new Set((favs || []).filter(f => f.userId === userId).map(f => f.eventoId));
-      document.querySelectorAll('.inicio-btn-favorito-nuevo').forEach((btn) => {
-        const id = btn.getAttribute('data-evento-id');
-        const active = setFav.has(id);
-        btn.classList.toggle('active', active);
-        btn.setAttribute('aria-pressed', active ? 'true' : 'false');
-      });
-    } catch (e) {
-      console.warn('⚠️ No se pudieron sincronizar favoritos UI:', e);
-    }
-  };
-  
-  // ✅ PAGINACIÓN DE EVENTOS (Prioridad BAJA)
-  let paginaActualInicio = 1;
-  const EVENTOS_POR_PAGINA = 10;
-  let eventosTotalesInicio = [];
-  
-  const loadEventosInicio = async (pagina = 1) => {
-    const eventosContainer = $('#eventos-lista');
-    if (!eventosContainer) return;
-    
-      const loadingDiv = $('#eventos-loading');
-      const vacioDiv = $('#eventos-vacio');
-    
+  // Cargar eventos al inicio
+  const eventosListaInicio = document.getElementById('eventos-lista');
+  if (eventosListaInicio) {
+    const loadEventosInicio = async () => {
       try {
+        const eventosLoading = document.getElementById('eventos-loading');
+        const eventosVacio = document.getElementById('eventos-vacio');
+        
         // Mostrar loading
-        if (loadingDiv) loadingDiv.style.display = 'block';
-        if (vacioDiv) vacioDiv.style.display = 'none';
-      
-  // Obtener y normalizar todos los eventos desde Firestore
-  const eventosRaw = await getFromFirestore('eventos');
-  const eventosData = await normalizarEventosEnBD(eventosRaw);
-
-        // Filtrar solo eventos activos y que aún no hayan comenzado
+        if (eventosLoading) eventosLoading.style.display = 'block';
+        if (eventosVacio) eventosVacio.style.display = 'none';
+        
+        const eventos = await getFromFirestore('eventos');
         const ahora = new Date();
-        const eventosVisibles = eventosData.filter(evento => {
-          // activo debe ser boolean true
-          if (evento.activo !== true) return false;
-          const d = construirFechaHora(evento);
-          // Si no tenemos fecha/hora válidas, lo mostramos para no ocultar por error de dato
-          if (!d) return true;
-          return ahora < d;
+        const eventosFuturos = eventos.filter(e => {
+          const fechaEvento = construirFechaHora(e);
+          return fechaEvento && ahora < fechaEvento;
         });
-
+        
         // Ocultar loading
-        if (loadingDiv) loadingDiv.style.display = 'none';
-
-        if (!eventosVisibles.length) {
-          if (vacioDiv) vacioDiv.style.display = 'block';
+        if (eventosLoading) eventosLoading.style.display = 'none';
+        
+        if (!eventosFuturos.length) {
+          if (eventosVacio) eventosVacio.style.display = 'block';
           return;
         }
-
-        // Ordenar eventos por fecha más próxima
-        eventosVisibles.sort((a, b) => {
-          const da = construirFechaHora(a) || new Date(8640000000000000);
-          const db = construirFechaHora(b) || new Date(8640000000000000);
-          return da - db;
-        });
-
-        // ✅ PAGINACIÓN: Guardar total y calcular slice
-        eventosTotalesInicio = eventosVisibles;
-        const totalPaginas = Math.ceil(eventosTotalesInicio.length / EVENTOS_POR_PAGINA);
-        const inicio = (pagina - 1) * EVENTOS_POR_PAGINA;
-        const fin = inicio + EVENTOS_POR_PAGINA;
-        const eventosPagina = eventosTotalesInicio.slice(inicio, fin);
-
-        // Limpiar contenedor (mantener solo elementos de control)
-        const elementosControl = eventosContainer.querySelectorAll('#eventos-loading, #eventos-vacio');
-        eventosContainer.innerHTML = '';
-        elementosControl.forEach(el => eventosContainer.appendChild(el));
-
-        // Crear cards para eventos de esta página
-        eventosPagina.forEach(evento => {
-          const disponibles = evento.maxPersonas - evento.unidos;
-          const currentUserId = localStorage.getItem('userId') || localStorage.getItem('currentUserId');
-          const isOrganizador = currentUserId && evento.organizadorId && evento.organizadorId === currentUserId;
-          const yaParticipa = currentUserId && Array.isArray(evento.participantes) && evento.participantes.includes(currentUserId);
-
-          let botonTexto = 'Unirse';
-          let botonDisabled = false;
-          if (disponibles <= 0) {
-            botonTexto = 'Completo';
-            botonDisabled = true;
-          } else if (isOrganizador) {
-            botonTexto = 'Organizador';
-            botonDisabled = true;
-          } else if (yaParticipa) {
-            botonTexto = 'Participando';
-            botonDisabled = true;
+        
+        // Obtener favoritos del usuario para marcar las estrellas
+        const userId = localStorage.getItem('currentUserId');
+        let favoritosUsuario = [];
+        if (userId) {
+          try {
+            const todosFavoritos = await getFromFirestore('favoritos');
+            favoritosUsuario = (todosFavoritos || [])
+              .filter(f => f.userId === userId)
+              .map(f => f.eventoId);
+          } catch (e) {
+            console.warn('No se pudieron cargar favoritos:', e);
           }
-          const fechaFormateada = formatearFecha(evento.fecha || (construirFechaHora(evento) ? `${construirFechaHora(evento).getFullYear()}-${pad2(construirFechaHora(evento).getMonth()+1)}-${pad2(construirFechaHora(evento).getDate())}` : ''));
-          const dEvt = construirFechaHora(evento);
-          const horaFormateada = formatearHora(evento.hora || (dEvt ? `${pad2(dEvt.getHours())}:${pad2(dEvt.getMinutes())}` : ''));
-          const linkGrupoRow = (evento.linkGrupo && String(evento.linkGrupo).trim())
-            ? `<div class="inicio-link-grupo-row" style="margin:6px 0 2px 0; display:block;">
-                 <span style="font-weight:600; color: var(--green-dark); margin-right:6px; font-size: 1.08em; font-style: italic;">Link de grupo:</span>
-                 <a href="${evento.linkGrupo}" target="_blank" rel="noopener noreferrer" style="color: var(--violet); font-size: 1.08em; font-style: italic; word-break: break-all; text-decoration: none;">${evento.linkGrupo}</a>
+        }
+        
+        // Renderizar eventos
+        for (const evento of eventosFuturos) {
+          const card = document.createElement('div');
+          card.className = 'inicio-card-evento evento-card';
+          
+          // Obtener datos del organizador
+          let nombreOrganizador = 'Desconocido';
+          let fotoOrganizador = 'img/PERFIL1.jpg';
+          
+          if (evento.organizadorId) {
+            try {
+              const perfilOrganizador = await getFromFirestore('perfiles', evento.organizadorId);
+              if (perfilOrganizador) {
+                nombreOrganizador = perfilOrganizador.nombre && perfilOrganizador.apellido 
+                  ? `${perfilOrganizador.nombre} ${perfilOrganizador.apellido}`
+                  : perfilOrganizador.nombre || nombreOrganizador;
+                fotoOrganizador = perfilOrganizador.foto || fotoOrganizador;
+              }
+            } catch (e) {
+              console.warn('No se pudo obtener perfil del organizador:', e);
+            }
+          }
+          
+          const userId = localStorage.getItem('currentUserId');
+          const yaParticipa = Array.isArray(evento.participantes) && evento.participantes.includes(userId);
+          const isOrganizador = userId && evento.organizadorId === userId;
+          const esFavorito = favoritosUsuario.includes(evento.id);
+          
+          // Link de grupo solo visible para participantes
+          const linkGrupoHTML = (evento.linkGrupo && (yaParticipa || isOrganizador))
+            ? `<div class="inicio-link-grupo-row">
+                 <span class="texto-bold texto-verde texto-mediano texto-italic">Link de grupo:</span>
+                 <a href="${evento.linkGrupo}" target="_blank" rel="noopener noreferrer" class="texto-violeta texto-mediano texto-italic">${evento.linkGrupo}</a>
                </div>`
             : '';
-
-          const eventoCard = document.createElement('div');
-          eventoCard.className = 'inicio-card-evento';
-          eventoCard.dataset.eventoId = evento.id;
-
-          eventoCard.innerHTML = `
-            <div class="inicio-titulo-row">
-              <h2 class="inicio-titulo-evento">${evento.titulo}</h2>
+          
+          card.innerHTML = `
+            <div class="evento-titulo-row">
+              <h2 class="inicio-titulo-evento evento-titulo">${evento.titulo || ''}</h2>
               ${(yaParticipa || isOrganizador) ? '<span class="evento-participando-badge">Participando</span>' : ''}
             </div>
-            <p class="inicio-descripcion-evento">${evento.descripcion}</p>
-            ${linkGrupoRow}
-            <div class="inicio-detalles-evento">
-              <span><img src="img/calendario.png" alt="Fecha" class="icono-evento" /> ${fechaFormateada}</span>
-              <span><img src="img/reloj-circular.png" alt="Hora" class="icono-evento" /> ${horaFormateada}</span>
-              <span><img src="img/ubicacion.png" alt="Ubicación" class="icono-evento" /> ${evento.ubicacion}</span>
-              <span>
-                <img src="img/personas.png" alt="Personas" class="icono-evento" />
-                ${evento.unidos}/${evento.maxPersonas} unidos 
-                <span class="evento-disponibles-texto">(${disponibles} lugares disponibles)</span>
-              </span>
+            <p class="inicio-descripcion-evento evento-descripcion">${evento.descripcion || ''}</p>
+            ${linkGrupoHTML}
+            <div class="inicio-detalles-evento evento-detalles">
+              <span><img src="img/calendario.png" alt="Fecha" class="icono-evento"> ${evento.fecha || ''}</span>
+              <span><img src="img/reloj-circular.png" alt="Hora" class="icono-evento"> ${evento.hora || ''}</span>
+              <span><img src="img/ubicacion.png" alt="Ubicación" class="icono-evento"> ${evento.ubicacion || ''}</span>
             </div>
-            <div class="inicio-bottom-row">
-              <div class="evento-organizador">
-                <img src="${evento.fotoOrganizador || 'img/PERFIL1.jpg'}" alt="Foto ${evento.organizador}" class="inicio-organizador-foto" />
-                <span class="inicio-organizador-nombre"><b>Organizado por</b><br>${evento.organizador}</span>
+            <div class="evento-bottom-row">
+              <div class="evento-organizador inicio-organizador">
+                <img src="${fotoOrganizador}" alt="Foto organizador" class="evento-organizador-foto inicio-organizador-foto" onerror="this.src='img/PERFIL1.jpg'" />
+                <span class="inicio-organizador-nombre">${organizadorLabel(nombreOrganizador)}</span>
               </div>
-              <div class="evento-actions">
-                <button class="inicio-btn-favorito-nuevo" data-evento-id="${evento.id}" aria-pressed="false" aria-label="Marcar como favorito">
+              <div class="evento-actions inicio-actions">
+                <button class="inicio-btn-favorito-nuevo ${esFavorito ? 'active' : ''}" data-evento-id="${evento.id}" aria-pressed="${esFavorito}" aria-label="${esFavorito ? 'Quitar de favoritos' : 'Agregar a favoritos'}">
                   <img src="img/logo-estrella.png" alt="Favorito" class="icono-evento" />
                 </button>
                 <button class="inicio-btn-compartir-nuevo" data-evento-id="${evento.id}">
                   <img src="img/logo-compartir.png" alt="Compartir" class="icono-evento" />
                 </button>
-                ${isOrganizador ? `<button class="inicio-btn-organizador" disabled>Organizador</button>` : ''}
-                ${(!isOrganizador && !yaParticipa) ? `<button class="inicio-btn-unirse-nuevo" data-evento-id="${evento.id}">Unirse</button>` : ''}
-                ${(!isOrganizador && yaParticipa) ? `<button class="inicio-btn-salir-nuevo" data-evento-id="${evento.id}">No participar</button>` : ''}
+                ${isOrganizador ? '' : (yaParticipa ? `<button class="inicio-btn-salir" data-evento-id="${evento.id}">No participar</button>` : `<button class="inicio-btn-unirse" data-evento-id="${evento.id}">Unirse</button>`)}
               </div>
             </div>
           `;
-
-          eventosContainer.appendChild(eventoCard);
-        });
-      
-        // ✅ PAGINACIÓN: Agregar controles de navegación
-        if (totalPaginas > 1) {
-          const paginacionDiv = document.createElement('div');
-          paginacionDiv.style.cssText = 'display: flex; justify-content: center; align-items: center; gap: 12px; margin-top: 24px; padding: 16px;';
           
-          const btnAnterior = document.createElement('button');
-          btnAnterior.textContent = '← Anterior';
-          btnAnterior.disabled = pagina === 1;
-          btnAnterior.style.cssText = 'padding: 10px 20px; border-radius: 8px; background: var(--violet); color: white; border: none; cursor: pointer; font-weight: 600;';
-          if (pagina === 1) btnAnterior.style.opacity = '0.5';
-          btnAnterior.addEventListener('click', () => {
-            if (pagina > 1) {
-              paginaActualInicio = pagina - 1;
-              loadEventosInicio(paginaActualInicio);
-              window.scrollTo({ top: 0, behavior: 'smooth' });
-            }
-          });
-          
-          const infoPagina = document.createElement('span');
-          infoPagina.textContent = `Página ${pagina} de ${totalPaginas} (${eventosTotalesInicio.length} eventos)`;
-          infoPagina.style.cssText = 'font-weight: 600; color: var(--green-dark);';
-          
-          const btnSiguiente = document.createElement('button');
-          btnSiguiente.textContent = 'Siguiente →';
-          btnSiguiente.disabled = pagina === totalPaginas;
-          btnSiguiente.style.cssText = 'padding: 10px 20px; border-radius: 8px; background: var(--violet); color: white; border: none; cursor: pointer; font-weight: 600;';
-          if (pagina === totalPaginas) btnSiguiente.style.opacity = '0.5';
-          btnSiguiente.addEventListener('click', () => {
-            if (pagina < totalPaginas) {
-              paginaActualInicio = pagina + 1;
-              loadEventosInicio(paginaActualInicio);
-              window.scrollTo({ top: 0, behavior: 'smooth' });
-            }
-          });
-          
-          paginacionDiv.appendChild(btnAnterior);
-          paginacionDiv.appendChild(infoPagina);
-          paginacionDiv.appendChild(btnSiguiente);
-          eventosContainer.appendChild(paginacionDiv);
+          eventosListaInicio.appendChild(card);
         }
-      
-        // Re-bind event listeners para los nuevos elementos
+        
+        // Bind de eventos después de renderizar
         bindEventoButtons();
-        // Sincronizar estado visual de favoritos con BD
-        await marcarFavoritosUsuario();
-      
+        
       } catch (error) {
         console.error('Error cargando eventos:', error);
-        if (loadingDiv) loadingDiv.style.display = 'none';
-        if (vacioDiv) {
-          vacioDiv.innerHTML = '<p>Error cargando eventos. <a href="#" onclick="location.reload()">Recargar página</a></p>';
-          vacioDiv.style.display = 'block';
+        const eventosLoading = document.getElementById('eventos-loading');
+        if (eventosLoading) {
+          eventosLoading.innerHTML = '<p class="centrado">Error al cargar eventos. Por favor recarga la página.</p>';
         }
       }
     };
-  
-    // Funciones helper para formatear fecha y hora
-    const formatearFecha = (fechaStr) => {
-      const fecha = new Date(fechaStr);
-      const opciones = { day: '2-digit', month: '2-digit', year: 'numeric' };
-      return fecha.toLocaleDateString('es-ES', opciones);
-    };
-  
-    const formatearHora = (horaStr) => {
-      const [horas, minutos] = horaStr.split(':');
-      return `${horas}:${minutos}`;
-  };
-  
-    // Sistema de limpieza automática de eventos
-    const limpiarEventosExpirados = async () => {
-      try {
-        const eventosData = await getFromFirestore('eventos');
-        const ahora = new Date();
-      
-        for (const evento of eventosData) {
-          if (!evento.activo) continue;
+    
+    loadEventosInicio();
+  }
 
-          // Calcular con campo canónico
-          let fechaHoraEvento = null;
-          if (evento.fechaHoraEvento) {
-            const d = new Date(evento.fechaHoraEvento);
-            if (!isNaN(d.getTime())) fechaHoraEvento = d;
-          }
-          if (!fechaHoraEvento) {
-            const d = construirFechaHora(evento);
-            if (d) fechaHoraEvento = d;
-          }
-          if (!fechaHoraEvento) continue; // si no hay fecha/hora válida, no tocar
-
-          const horaLimite = new Date(fechaHoraEvento.getTime() + 60 * 60 * 1000); // +1 hora
-        
-          if (ahora > horaLimite) {
-            console.log(`Limpiando evento expirado: ${evento.titulo}`);
-          
-            // Marcar evento como inactivo en lugar de eliminarlo
-            const eventoInactivo = {
-              ...evento,
-              activo: false,
-              fechaFinalizacion: ahora.toISOString()
-            };
-          
-            await saveToFirestore('eventos', eventoInactivo, evento.id);
-          
-            // Mover a historial de todos los participantes si no existe
-            if (evento.participantes && evento.participantes.length > 0) {
-              for (const participanteId of evento.participantes) {
-                const historialId = `${participanteId}_${evento.id}_finalizado`;
-                const historialExistente = await getFromFirestore('historial', historialId);
-              
-                if (!historialExistente) {
-                  const historialData = {
-                    eventoId: evento.id,
-                    tipo: 'finalizado',
-                    titulo: evento.titulo,
-                    fecha: evento.fecha,
-                    hora: evento.hora,
-                    ubicacion: evento.ubicacion,
-                    organizador: evento.organizador,
-                    fechaFinalizacion: ahora.toISOString(),
-                    participantes: evento.participantes.length
-                  };
-                
-                  await saveToFirestore('historial', historialData, historialId);
-                }
-              }
-            }
-          }
-        }
-      } catch (error) {
-        console.error('Error limpiando eventos expirados:', error);
-      }
-    };
-  
-    // Ejecutar limpieza cada 30 minutos
-    const iniciarLimpiezaAutomatica = () => {
-      limpiarEventosExpirados(); // Ejecutar inmediatamente
-      setInterval(limpiarEventosExpirados, 30 * 60 * 1000); // Cada 30 minutos
-    };
-  
+  // Bind de botones de eventos con TODA la funcionalidad
   const bindEventoButtons = () => {
-    $$('.inicio-btn-unirse-nuevo').forEach((btn) => {
-      if (btn.dataset.bound) return;
-      btn.dataset.bound = 'true';
-        btn.addEventListener('click', async () => {
-          const eventoId = btn.dataset.eventoId;
-          // Evitar doble clic marcando estado de carga
-          if (btn.dataset.loading === '1') return;
-          const prevText = btn.textContent;
-          const currentLabel = prevText.trim();
-          // Validaciones rápidas según estado visual actual
-          if (currentLabel === 'Completo') {
-            mostrarMensajeError('Este evento está completo');
-            return;
-          }
-          if (currentLabel === 'Organizador') {
-            mostrarMensajeError('Sos el organizador de este evento');
-            return;
-          }
-          if (currentLabel === 'Participando') {
-            mostrarMensajeError('Ya estás unido a este evento');
-            return;
-          }
-
-          // Activar estado de carga
-          btn.dataset.loading = '1';
-          btn.disabled = true;
-          btn.textContent = 'Cargando…';
-          const userId = localStorage.getItem('userId') || localStorage.getItem('currentUserId');
-          if (!userId) {
-            mostrarMensajeError('Debes iniciar sesión para unirte a un evento');
-            window.location.href = 'login.html';
-            btn.dataset.loading = '0';
-            btn.disabled = false;
-            btn.textContent = prevText;
-            return;
-          }
+    const userId = localStorage.getItem('currentUserId');
+    
+    // BOTONES DE FAVORITOS
+    const btnsFavorito = document.querySelectorAll('.inicio-btn-favorito-nuevo');
+    btnsFavorito.forEach(btn => {
+      btn.addEventListener('click', async function(e) {
+        e.preventDefault();
+        e.stopPropagation();
         
-          try {
-            // Obtener datos actuales del evento
-            const evento = await getFromFirestore('eventos', eventoId);
-          
-            if (!evento) {
-              mostrarMensajeError('Evento no encontrado');
-              btn.dataset.loading = '0';
-              btn.disabled = false;
-              btn.textContent = prevText;
-              return;
-            }
-          
-            // Verificar si ya está unido
-            if (evento.participantes && evento.participantes.includes(userId)) {
-              // Ya unido: ajustar UI a estado consistente
-              const card = btn.closest('.inicio-card-evento');
-              const headerFlex = card?.querySelector('div > h2.inicio-titulo-evento')?.parentElement;
-              if (headerFlex && !headerFlex.querySelector('.evento-participando-badge')) {
-                const badge = document.createElement('span');
-                badge.className = 'evento-participando-badge';
-                badge.textContent = 'Participando';
-                headerFlex.appendChild(badge);
-              }
-              btn.outerHTML = `<button class=\"inicio-btn-salir-nuevo\" data-evento-id=\"${eventoId}\">No participar</button>`;
-              btn.dataset.loading = '0';
-              bindEventoButtons();
-              return;
-            }
-          
-            // Verificar disponibilidad
-            if (evento.unidos >= evento.maxPersonas) {
-              mostrarMensajeError('Este evento está completo');
-              btn.disabled = true;
-              btn.textContent = 'Completo';
-              btn.dataset.loading = '0';
-              return;
-            }
-
-            // Actualizar evento
-            const participantesActualizados = evento.participantes || [];
-            participantesActualizados.push(userId);
-          
-            const eventoActualizado = {
-              ...evento,
-              unidos: evento.unidos + 1,
-              participantes: participantesActualizados
-            };
-          
-            await saveToFirestore('eventos', eventoActualizado, eventoId);
-          
-            // Guardar en historial del usuario
-            const historialData = {
-              eventoId: eventoId,
-              tipo: 'unido',
-              titulo: evento.titulo,
-              fecha: evento.fecha,
-              hora: evento.hora,
-              ubicacion: evento.ubicacion,
-              organizador: evento.organizador,
-              fechaUnion: new Date().toISOString()
-            };
-          
-            await saveToFirestore('historial', historialData, `${userId}_${eventoId}_unido`);
-          
-            mostrarMensajeExito(`¡Te has unido a "${evento.titulo}"!`);
-
-            // Refrescar historial si está en perfil abierto
-            if (document.querySelector('#eventos-historial')) {
-              // Marcar para recarga rápida del historial en próxima vista
-              localStorage.setItem('refrescarHistorial', '1');
-            }
-          
-            // Actualizar UI inmediatamente
-            const card = btn.closest('.inicio-card-evento');
-            const nuevosDisponibles = evento.maxPersonas - eventoActualizado.unidos;
-          
-            // Actualizar contadores en la card
-            const personasSpan = card.querySelector('.inicio-detalles-evento span:last-child');
-            personasSpan.innerHTML = `
-              <img src="img/personas.png" alt="Personas" class="icono-evento">
-              ${eventoActualizado.unidos}/${evento.maxPersonas} unidos 
-              <span class="evento-disponibles-texto">(${nuevosDisponibles} lugares disponibles)</span>
-            `;
-          
-            // Reemplazar botón por 'No participar'
-            btn.outerHTML = `<button class=\"inicio-btn-salir-nuevo\" data-evento-id=\"${eventoId}\">No participar</button>`;
-            // Añadir badge si no existe
-            const headerFlex = card.querySelector('div > h2.inicio-titulo-evento')?.parentElement;
-            if (headerFlex && !headerFlex.querySelector('.evento-participando-badge')) {
-              const badge = document.createElement('span');
-              badge.className = 'evento-participando-badge';
-              badge.textContent = 'Participando';
-              headerFlex.appendChild(badge);
-            }
-            btn.dataset.loading = '0';
-            // Re-vincular handlers para el nuevo botón salir
-            bindEventoButtons();
-          
-          } catch (error) {
-            console.error('Error uniéndose al evento:', error);
-            mostrarMensajeError('Error al unirse al evento. Intenta nuevamente.');
-            // Restablecer si falló
-            btn.dataset.loading = '0';
-            btn.disabled = false;
-            btn.textContent = prevText;
-          }
-      });
-    });
-
-    $$('.inicio-btn-favorito-nuevo').forEach((btn) => {
-      if (btn.dataset.bound) return;
-      btn.dataset.bound = 'true';
-      btn.addEventListener('click', async () => {
-          const eventoId = btn.dataset.eventoId;
-          const userId = localStorage.getItem('userId') || localStorage.getItem('currentUserId');
-        
-          if (!userId) {
-            mostrarMensajeError('Debes iniciar sesión para agregar favoritos');
-            window.location.href = 'login.html';
-            return;
-          }
-        
-          try {
-            btn.classList.toggle('active');
-            const isActive = btn.classList.contains('active');
-            btn.setAttribute('aria-pressed', isActive ? 'true' : 'false');
-          
-            if (isActive) {
-              // Agregar a favoritos
-              const evento = await getFromFirestore('eventos', eventoId);
-              const favoritoData = {
-                eventoId: eventoId,
-                userId: userId,
-                titulo: evento.titulo,
-                descripcion: evento.descripcion,
-                fecha: evento.fecha,
-                hora: evento.hora,
-                ubicacion: evento.ubicacion,
-                organizador: evento.organizador,
-                fechaAgregado: new Date().toISOString()
-              };
-            
-              await saveToFirestore('favoritos', favoritoData, `${userId}_${eventoId}`);
-              mostrarMensajeExito('Agregado a favoritos');
-            } else {
-              // Remover de favoritos de Firestore
-              await deleteFromFirestore('favoritos', `${userId}_${eventoId}`);
-              mostrarMensajeExito('Removido de favoritos');
-            }
-          } catch (error) {
-            console.error('Error con favoritos:', error);
-            mostrarMensajeError('Error al gestionar favoritos');
-            btn.classList.toggle('active'); // Revertir estado visual
-          }
-      });
-    });
-
-    // Compartir: copiar link del evento al portapapeles
-    $$('.inicio-btn-compartir-nuevo').forEach((btn) => {
-      if (btn.dataset.bound) return;
-      btn.dataset.bound = 'true';
-      btn.addEventListener('click', async () => {
-        try {
-          const eventoId = btn.dataset.eventoId;
-          // Construimos un link simple con query param, compatible con hosting estático
-          // Apunta a inicio.html with anchor o query para que puedas identificarlo si luego sumas detalle.
-          const base = window.location.origin + window.location.pathname.replace(/[^\/]+$/, 'inicio.html');
-          const url = `${base}?evento=${encodeURIComponent(eventoId)}`;
-          await navigator.clipboard.writeText(url);
-          // Efecto presionado temporal
-          btn.classList.add('pressed');
-          mostrarMensajeExito('Link del evento copiado al portapapeles');
-          setTimeout(() => {
-            btn.classList.remove('pressed');
-          }, 900);
-        } catch (err) {
-          console.error('No se pudo copiar el link:', err);
-          mostrarMensajeError('No se pudo copiar el link.');
-        }
-      });
-    });
-
-    // Salir del evento
-    $$('.inicio-btn-salir-nuevo').forEach((btn) => {
-      if (btn.dataset.bound) return;
-      btn.dataset.bound = 'true';
-      btn.addEventListener('click', async () => {
-        const eventoId = btn.dataset.eventoId;
-        const userId = localStorage.getItem('userId') || localStorage.getItem('currentUserId');
         if (!userId) {
-          mostrarMensajeError('Debes iniciar sesión');
-          window.location.href = 'login.html';
+          mostrarMensajeError('Debes iniciar sesión para marcar favoritos');
           return;
         }
+        
+        const eventoId = this.dataset.eventoId;
+        const isActive = this.classList.contains('active');
+        
         try {
-          btn.disabled = true;
-          btn.textContent = 'Saliendo…';
-          const evento = await getFromFirestore('eventos', eventoId);
-          if (!evento || !Array.isArray(evento.participantes) || !evento.participantes.includes(userId)) {
-            mostrarMensajeError('No estabas unido a este evento');
-            btn.disabled = false; btn.textContent = 'Salir';
-            return;
-          }
-          const nuevosParticipantes = evento.participantes.filter(p => p !== userId);
-          const nuevosUnidos = Math.max(0, (evento.unidos || 0) - 1);
-          const actualizado = { ...evento, participantes: nuevosParticipantes, unidos: nuevosUnidos };
-          await saveToFirestore('eventos', actualizado, eventoId);
-          mostrarMensajeExito('Saliste del evento');
-          if (document.querySelector('#eventos-historial')) {
-            localStorage.setItem('refrescarHistorial', '1');
-          }
-          // Actualizar UI de la card
-          const card = btn.closest('.inicio-card-evento');
-          const personasSpan = card?.querySelector('.inicio-detalles-evento span:last-child');
-          if (personasSpan) {
-            const nuevosDisp = (evento.maxPersonas || 0) - nuevosUnidos;
-            personasSpan.innerHTML = `
-              <img src="img/personas.png" alt="Personas" class="icono-evento">
-              ${nuevosUnidos}/${evento.maxPersonas} unidos 
-              <span class="evento-disponibles-texto">(${nuevosDisp} lugares disponibles)</span>
-            `;
-          }
-          // Eliminar badge 'Participando' si existe
-          const headerFlex = card?.querySelector('div > h2.inicio-titulo-evento')?.parentElement;
-          const badge = headerFlex?.querySelector('.evento-participando-badge');
-          if (badge) badge.remove();
-          // Reactivar botón Unirse si aplica
-          let btnUnirse = card?.querySelector('.inicio-btn-unirse-nuevo');
-          if (!btnUnirse) {
-            btnUnirse = document.createElement('button');
-            btnUnirse.className = 'inicio-btn-unirse-nuevo';
-            btnUnirse.dataset.eventoId = eventoId;
-            btnUnirse.textContent = 'Unirse';
-            const actions = card?.querySelector('.evento-actions');
-            actions?.appendChild(btnUnirse);
+          if (isActive) {
+            // Quitar de favoritos
+            await deleteFromFirestore('favoritos', `${userId}_${eventoId}`);
+            this.classList.remove('active');
+            this.setAttribute('aria-pressed', 'false');
+            this.setAttribute('aria-label', 'Agregar a favoritos');
+            mostrarMensajeExito('Eliminado de favoritos');
           } else {
-            btnUnirse.disabled = false;
-            btnUnirse.textContent = 'Unirse';
+            // Agregar a favoritos
+            const favData = {
+              userId,
+              eventoId,
+              fechaAgregado: new Date().toISOString()
+            };
+            await saveToFirestore('favoritos', favData, `${userId}_${eventoId}`);
+            this.classList.add('active');
+            this.setAttribute('aria-pressed', 'true');
+            this.setAttribute('aria-label', 'Quitar de favoritos');
+            mostrarMensajeExito('Agregado a favoritos');
           }
-          // Eliminar botón Salir y re-vincular
-          btn.remove();
-          bindEventoButtons();
-        } catch (err) {
-          console.error('Error al salir del evento:', err);
-          mostrarMensajeError('No se pudo salir del evento');
-          btn.disabled = false;
-          btn.textContent = 'Salir';
+        } catch (error) {
+          console.error('Error toggling favorito:', error);
+          mostrarMensajeError('Error al actualizar favoritos');
         }
       });
     });
-  };
-  
-  loadEventosInicio();
-  bindEventoButtons();
-
-  // Manejo de botones en favoritos
-  const bindFavoritosButtons = () => {
-    // Unirse desde favoritos
-    $$('.favoritos-btn-unirse').forEach((btn) => {
-      if (btn.dataset.bound) return; btn.dataset.bound = 'true';
-      btn.addEventListener('click', async () => {
-        const eventoId = btn.dataset.eventoId;
-        const userId = localStorage.getItem('userId') || localStorage.getItem('currentUserId');
-        if (!userId) { mostrarMensajeError('Debes iniciar sesión'); window.location.href = 'login.html'; return; }
+    
+    // BOTONES DE COMPARTIR
+    const btnsCompartir = document.querySelectorAll('.inicio-btn-compartir-nuevo');
+    btnsCompartir.forEach(btn => {
+      btn.addEventListener('click', async function(e) {
+        e.preventDefault();
+        e.stopPropagation();
+        
+        const eventoId = this.dataset.eventoId;
+        const url = `${window.location.origin}/inicio.html?evento=${eventoId}`;
+        
         try {
-          btn.disabled = true; btn.textContent = 'Cargando…';
-          const evento = await getFromFirestore('eventos', eventoId);
-          if (!evento) { mostrarMensajeError('Evento no encontrado'); btn.disabled = false; btn.textContent = 'Unirse'; return; }
-          if (Array.isArray(evento.participantes) && evento.participantes.includes(userId)) {
-            // Ya participa: ajustar UI coherente
-            const cardExist = btn.closest('.favoritos-card-evento');
-            const headerFlexExist = cardExist?.querySelector('div > h2.favoritos-titulo-evento')?.parentElement;
-            if (headerFlexExist && !headerFlexExist.querySelector('.evento-participando-badge')) {
-              const badge = document.createElement('span');
-              badge.className = 'evento-participando-badge';
-              badge.textContent = 'Participando';
-              headerFlexExist.appendChild(badge);
-            }
-            btn.outerHTML = `<button class=\"favoritos-btn-salir\" data-evento-id=\"${eventoId}\">No participar</button>`;
-            bindFavoritosButtons();
-            return;
+          if (navigator.share) {
+            await navigator.share({
+              title: 'Evento en Activá',
+              text: '¡Mirá este evento!',
+              url: url
+            });
+          } else if (navigator.clipboard) {
+            await navigator.clipboard.writeText(url);
+            mostrarMensajeExito('¡Link copiado al portapapeles!');
+          } else {
+            // Fallback para navegadores antiguos
+            const input = document.createElement('input');
+            input.value = url;
+            document.body.appendChild(input);
+            input.select();
+            document.execCommand('copy');
+            document.body.removeChild(input);
+            mostrarMensajeExito('¡Link copiado!');
           }
-          if ((evento.unidos || 0) >= (evento.maxPersonas || 0)) { btn.disabled = true; btn.textContent = 'Completo'; return; }
-          const participantes = Array.isArray(evento.participantes) ? [...evento.participantes] : []; participantes.push(userId);
-          const unidos = (evento.unidos || 0) + 1;
-          await saveToFirestore('eventos', { ...evento, participantes, unidos }, eventoId);
-          await saveToFirestore('historial', { eventoId, tipo:'unido', titulo: evento.titulo, fecha: evento.fecha, hora: evento.hora, ubicacion: evento.ubicacion, organizador: evento.organizador, fechaUnion: new Date().toISOString() }, `${userId}_${eventoId}_unido`);
-          mostrarMensajeExito(`¡Te has unido a "${evento.titulo}"!`);
-          if (document.querySelector('#eventos-historial')) { localStorage.setItem('refrescarHistorial', '1'); }
-          // Actualizar UI card
-          const card = btn.closest('.favoritos-card-evento');
-          const spanPart = card?.querySelector('.favoritos-detalles-evento span:last-child');
-          if (spanPart) { const disp = (evento.maxPersonas||0) - unidos; spanPart.innerHTML = `<img src="img/personas.png" alt="Participantes" class="icono-evento"> ${unidos}/${evento.maxPersonas} unidos <span class="evento-disponibles-texto">(${disp} lugares disponibles)</span>`; }
-          // cambiar botón
-          // Añadir badge si no existe
-          const headerFlex = card.querySelector('div > h2.favoritos-titulo-evento')?.parentElement;
-          if (headerFlex && !headerFlex.querySelector('.evento-participando-badge')) {
-            const badge = document.createElement('span');
-            badge.className = 'evento-participando-badge';
-            badge.textContent = 'Participando';
-            headerFlex.appendChild(badge);
-          }
-          btn.outerHTML = `<button class=\"favoritos-btn-salir\" data-evento-id=\"${eventoId}\">No participar</button>`;
-          bindFavoritosButtons();
-        } catch (e) { console.error(e); mostrarMensajeError('No se pudo unir'); btn.disabled = false; btn.textContent = 'Unirse'; }
+        } catch (error) {
+          console.error('Error compartiendo:', error);
+          mostrarMensajeError('No se pudo compartir');
+        }
       });
     });
-
-    // Salir desde favoritos
-    $$('.favoritos-btn-salir').forEach((btn) => {
-      if (btn.dataset.bound) return; btn.dataset.bound = 'true';
-      btn.addEventListener('click', async () => {
-        const eventoId = btn.dataset.eventoId;
-        const userId = localStorage.getItem('userId') || localStorage.getItem('currentUserId');
-        if (!userId) { mostrarMensajeError('Debes iniciar sesión'); window.location.href = 'login.html'; return; }
-        try {
-          btn.disabled = true; btn.textContent = 'Saliendo…';
-          const evento = await getFromFirestore('eventos', eventoId);
-          if (!evento || !Array.isArray(evento.participantes)) { mostrarMensajeError('Evento no válido'); btn.disabled = false; btn.textContent = 'Salir'; return; }
-          if (!evento.participantes.includes(userId)) { mostrarMensajeError('No estabas unido'); btn.disabled = false; btn.textContent = 'Salir'; return; }
-          const participantes = evento.participantes.filter(p => p !== userId);
-          const unidos = Math.max(0, (evento.unidos||0) - 1);
-          await saveToFirestore('eventos', { ...evento, participantes, unidos }, eventoId);
-          mostrarMensajeExito('Saliste del evento');
-          if (document.querySelector('#eventos-historial')) { localStorage.setItem('refrescarHistorial', '1'); }
-          const card = btn.closest('.favoritos-card-evento');
-          const spanPart = card?.querySelector('.favoritos-detalles-evento span:last-child');
-          if (spanPart) { const disp = (evento.maxPersonas||0) - unidos; spanPart.innerHTML = `<img src="img/personas.png" alt="Participantes" class="icono-evento"> ${unidos}/${evento.maxPersonas} unidos <span class="evento-disponibles-texto">(${disp} lugares disponibles)</span>`; }
-          // Eliminar badge 'Participando' si existe
-          const headerFlex = card?.querySelector('div > h2.favoritos-titulo-evento')?.parentElement;
-          const badge = headerFlex?.querySelector('.evento-participando-badge');
-          if (badge) badge.remove();
-          btn.outerHTML = `<button class=\"favoritos-btn-unirse\" data-evento-id=\"${eventoId}\">Unirse</button>`;
-          bindFavoritosButtons();
-        } catch (e) { console.error(e); mostrarMensajeError('No se pudo salir'); btn.disabled = false; btn.textContent = 'Salir'; }
-      });
-    });
-
-    // Botón de estrella (favoritos) en página de favoritos
-    document.querySelectorAll('.favoritos-card-evento .inicio-btn-favorito-nuevo').forEach((btn) => {
-      if (btn.dataset.bound) return;
-      btn.dataset.bound = 'true';
-      btn.addEventListener('click', async () => {
-        const eventoId = btn.dataset.eventoId;
-        const userId = localStorage.getItem('userId') || localStorage.getItem('currentUserId');
+    
+    // BOTONES DE UNIRSE
+    const btnsUnirse = document.querySelectorAll('.inicio-btn-unirse, .favoritos-btn-unirse');
+    btnsUnirse.forEach(btn => {
+      btn.addEventListener('click', async function(e) {
+        e.preventDefault();
+        e.stopPropagation();
         
         if (!userId) {
-          mostrarMensajeError('Debes iniciar sesión');
-          window.location.href = 'login.html';
+          mostrarMensajeError('Debes iniciar sesión para unirte a eventos');
           return;
         }
         
-        try {
-          // En favoritos, siempre está activo, así que al hacer click se quita
-          btn.classList.remove('active');
-          btn.setAttribute('aria-pressed', 'false');
-          
-          await deleteFromFirestore('favoritos', `${userId}_${eventoId}`);
-          mostrarMensajeExito('Removido de favoritos');
-          
-          // Eliminar la card con animación
-          const card = btn.closest('.favoritos-card-evento');
-          if (card) {
-            card.style.transition = 'opacity 0.3s ease';
-            card.style.opacity = '0';
-            setTimeout(() => card.remove(), 300);
-          }
-          
-          // Desmarcar estrella en inicio (si existe)
-          document.querySelectorAll(`.inicio-card-evento .inicio-btn-favorito-nuevo[data-evento-id="${eventoId}"]`).forEach(star => {
-            star.classList.remove('active');
-            star.setAttribute('aria-pressed', 'false');
-          });
-        } catch (error) {
-          console.error('Error al quitar de favoritos:', error);
-          mostrarMensajeError('Error al quitar de favoritos');
-          btn.classList.add('active'); // Revertir estado visual
-        }
-      });
-    });
-
-    // Botón de compartir en página de favoritos
-    document.querySelectorAll('.favoritos-card-evento .inicio-btn-compartir-nuevo').forEach((btn) => {
-      if (btn.dataset.bound) return;
-      btn.dataset.bound = 'true';
-      btn.addEventListener('click', async () => {
-        try {
-          const eventoId = btn.dataset.eventoId;
-          const base = window.location.origin + window.location.pathname.replace(/[^\/]+$/, 'inicio.html');
-          const url = `${base}?evento=${encodeURIComponent(eventoId)}`;
-          await navigator.clipboard.writeText(url);
-          
-          // Efecto presionado temporal
-          btn.classList.add('pressed');
-          mostrarMensajeExito('Link del evento copiado al portapapeles');
-          setTimeout(() => {
-            btn.classList.remove('pressed');
-          }, 900);
-        } catch (err) {
-          console.error('No se pudo copiar el link:', err);
-          mostrarMensajeError('No se pudo copiar el link.');
-        }
-      });
-    });
-  };
-
-  // ========================================
-  // HISTORIAL DE EVENTOS (perfil.html)
-  // ========================================
-  
-  const historialContent = document.querySelector('#historial-content');
-  let cacheHistorial = [];
-
-  const cargarHistorial = async () => {
-    const userId = localStorage.getItem('userId') || localStorage.getItem('currentUserId');
-    if (!userId) return [];
-    
-    try {
-      const todosHistorial = await getFromFirestore('historial');
-      // Filtrar solo entradas del usuario actual
-      const miHistorial = (todosHistorial || []).filter(h => {
-        if (!h.id) return false;
-        // El ID tiene formato: userId_eventoId_tipo
-        return h.id.startsWith(`${userId}_`);
-      });
-      return miHistorial;
-    } catch (error) {
-      console.error('Error cargando historial:', error);
-      return [];
-    }
-  };
-
-  const renderHistorial = async (items, tipoFiltro = 'todos') => {
-    if (!historialContent) return;
-    
-    // Filtrar por tipo si no es "todos"
-    let itemsFiltrados = items;
-    if (tipoFiltro !== 'todos') {
-      itemsFiltrados = items.filter(h => h.tipo === tipoFiltro);
-    }
-
-    // Agrupar por eventoId y mostrar solo la entrada más relevante por evento
-    const prioridad = { finalizado: 3, creado: 2, unido: 1 };
-    const eventosMap = new Map();
-    for (const h of itemsFiltrados) {
-      const eid = h.eventoId;
-      if (!eid) continue;
-      if (!eventosMap.has(eid) || prioridad[h.tipo] > prioridad[eventosMap.get(eid).tipo]) {
-        eventosMap.set(eid, h);
-      }
-    }
-    itemsFiltrados = Array.from(eventosMap.values());
-
-    if (!itemsFiltrados.length) {
-      historialContent.innerHTML = `<p style="color:#888;">No hay eventos ${tipoFiltro !== 'todos' ? 'en esta categoría' : 'en tu historial'}.</p>`;
-      return;
-    }
-
-    // Separar eventos activos (futuros) y pasados
-    const ahora = new Date();
-    const activos = [];
-    const pasados = [];
-    
-    itemsFiltrados.forEach(item => {
-      const fechaEvento = construirFechaHora(item);
-      if (fechaEvento && fechaEvento > ahora) {
-        activos.push(item);
-      } else {
-        pasados.push(item);
-      }
-    });
-
-    // Ordenar activos: del más próximo al más lejano
-    activos.sort((a, b) => {
-      const fa = construirFechaHora(a) || new Date(8640000000000000);
-      const fb = construirFechaHora(b) || new Date(8640000000000000);
-      return fa - fb;
-    });
-
-    // Ordenar pasados: del más reciente al más antiguo
-    pasados.sort((a, b) => {
-      const fa = construirFechaHora(a) || new Date(0);
-      const fb = construirFechaHora(b) || new Date(0);
-      return fb - fa;
-    });
-
-    // Renderizar todos los eventos (activos primero, luego pasados) - AWAIT para cada item
-    const htmlPartsActivos = await Promise.all(activos.map(item => renderHistorialItem(item, false)));
-    const htmlPartsPasados = await Promise.all(pasados.map(item => renderHistorialItem(item, true)));
-    
-    const html = htmlPartsActivos.join('') + htmlPartsPasados.join('');
-    historialContent.innerHTML = html;
-
-    // Bind event listeners
-    bindHistorialButtons();
-  };
-
-  // Helper para renderizar cada item del historial
-  async function renderHistorialItem(item, esPasado) {
-    const userId = localStorage.getItem('userId') || localStorage.getItem('currentUserId');
-    const esCreado = item.tipo === 'creado';
-    const esUnido = item.tipo === 'unido';
-    const esFinalizado = item.tipo === 'finalizado';
-    const fechaEvento = construirFechaHora(item);
-    const esFuturo = fechaEvento && fechaEvento > new Date();
-    
-    let fechaMostrar = item.fecha || '';
-    let horaMostrar = item.hora || '';
-    
-    // Determinar acciones según estado y rol
-    let botonesAccion = '';
-    
-    if (!esPasado && esFuturo) {
-      // Evento futuro: organizador puede editar/borrar, participante puede salir
-      if (esCreado) {
-        botonesAccion = `
-          <div class="historial-actions">
-            <button class="btn-editar-evento btn-base btn-secondary" data-id="${item.eventoId}" title="Editar evento">Editar</button>
-            <button class="btn-borrar-evento btn-base btn-danger" data-id="${item.eventoId}" title="Borrar evento">Borrar</button>
-          </div>
-        `;
-      } else if (esUnido) {
-        botonesAccion = `
-          <div class="historial-actions">
-            <button class="btn-no-participar btn-base btn-danger" data-id="${item.eventoId}" title="No participar">No participar</button>
-          </div>
-        `;
-      }
-    } else if (esPasado && !esCreado) {
-      // Evento pasado: solo participantes (no organizadores) pueden valorar
-      // Verificar si ya valoró este evento
-      const valoracionId = `${userId}_${item.eventoId}`;
-      let valoracionExistente = null;
-      try {
-        valoracionExistente = await getFromFirestore('valoraciones', valoracionId);
-      } catch (e) {
-        // No existe valoración
-      }
-
-      if (valoracionExistente && valoracionExistente.estrellas) {
-        // Ya valoró: mostrar valoración existente
-        const estrellas = valoracionExistente.estrellas;
-        botonesAccion = `
-          <div class="historial-valoracion">
-            <p style="margin:8px 0 4px;font-size:0.9em;color:#4CAF50;">✓ Tu valoración: ${'★'.repeat(estrellas)}${'☆'.repeat(5-estrellas)}</p>
-          </div>
-        `;
-      } else {
-        // Aún no valoró: mostrar sistema de estrellas
-        botonesAccion = `
-          <div class="historial-valoracion">
-            <p style="margin:8px 0 4px;font-size:0.9em;color:#666;">¿Cómo fue tu experiencia?</p>
-            <div class="estrellas-container" data-evento-id="${item.eventoId}">
-              ${[1,2,3,4,5].map(i => `<span class="estrella" data-valor="${i}">★</span>`).join('')}
-            </div>
-            <button class="btn-enviar-valoracion btn-base btn-primary" data-evento-id="${item.eventoId}" style="margin-top:8px;display:none;">Enviar valoración</button>
-          </div>
-        `;
-      }
-    }
-
-    return `
-      <div class="historial-item${esPasado ? ' historial-pasado' : ''}" style="${esPasado ? 'opacity:0.6;filter:grayscale(0.3);' : ''}">
-        <div class="historial-header">
-          <h4>${item.titulo || 'Sin título'}</h4>
-          ${botonesAccion}
-        </div>
-        <div class="historial-detalles">
-          ${item.descripcion ? `<p>${item.descripcion}</p>` : ''}
-          <div class="historial-info">
-            ${fechaMostrar ? `<span><img src="img/calendario.png" alt="Fecha" style="width:16px;height:16px;vertical-align:middle;margin-right:6px;">${fechaMostrar}</span>` : ''}
-            ${horaMostrar ? `<span><img src="img/reloj-circular.png" alt="Hora" style="width:16px;height:16px;vertical-align:middle;margin:0 6px 0 10px;">${horaMostrar}</span>` : ''}
-            ${item.ubicacion ? `<span><img src="img/ubicacion.png" alt="Ubicación" style="width:16px;height:16px;vertical-align:middle;margin:0 6px 0 10px;">${item.ubicacion}</span>` : ''}
-          </div>
-          ${item.organizador && !esCreado ? `<p class="historial-organizador">Organizado por: ${item.organizador}</p>` : ''}
-          ${item.participantes ? `<p class="historial-participantes">Participantes: ${item.participantes}</p>` : ''}
-        </div>
-        ${esCreado && !esPasado ? `
-          <div class="participantes-section" data-evento-id="${item.eventoId}">
-            <button class="participantes-toggle btn-base btn-secondary">Ver participantes</button>
-            <div class="participantes-lista" style="display:none;"></div>
-          </div>
-        ` : ''}
-      </div>
-    `;
-  }
-
-  // Vincular eventos de botones del historial
-  function bindHistorialButtons() {
-    // Botón borrar evento
-    historialContent.querySelectorAll('.btn-borrar-evento').forEach(btn => {
-      btn.addEventListener('click', () => {
-        const eventoId = btn.getAttribute('data-id');
-        if (!eventoId) return;
-        const modalConf = document.querySelector('#modal-confirmar-borrado');
-        if (!modalConf) return;
-        modalConf.dataset.eventoId = eventoId;
-        modalConf.style.display = 'flex';
-        document.body.classList.add('modal-open');
-      });
-    });
-
-    // Botón no participar
-    historialContent.querySelectorAll('.btn-no-participar').forEach(btn => {
-      btn.addEventListener('click', async () => {
-        const eventoId = btn.getAttribute('data-id');
-        const userId = localStorage.getItem('userId') || localStorage.getItem('currentUserId');
-        if (!eventoId || !userId) return;
+        const eventoId = this.dataset.eventoId;
         
         try {
           const evento = await getFromFirestore('eventos', eventoId);
-          if (!evento || !Array.isArray(evento.participantes)) return;
-          
-          const nuevosParticipantes = evento.participantes.filter(pid => pid !== userId);
-          const nuevosUnidos = Math.max(0, (evento.unidos || 0) - 1);
-          
-          await saveToFirestore('eventos', { 
-            ...evento, 
-            participantes: nuevosParticipantes,
-            unidos: nuevosUnidos
-          }, eventoId);
-          
-          const historialId = `${userId}_${eventoId}_unido`;
-          await deleteFromFirestore('historial', historialId);
-          
-          mostrarMensajeExito('Has dejado de participar en el evento');
-          
-          cacheHistorial = await cargarHistorial();
-          const activeTab = document.querySelector('.historial-tab.active');
-          const tipo = activeTab ? activeTab.getAttribute('data-tipo') : 'todos';
-          renderHistorial(cacheHistorial, tipo);
-        } catch (err) {
-          console.error(err);
-          mostrarMensajeError('No se pudo dejar de participar');
-        }
-      });
-    });
-
-    // Sistema de valoración con estrellas (rewritten for robustness)
-    historialContent.querySelectorAll('.estrellas-container').forEach((container) => {
-      const estrellas = container.querySelectorAll('.estrella');
-      const eventoId = container.getAttribute('data-evento-id') || '';
-      const btnEnviar = historialContent.querySelector(`.btn-enviar-valoracion[data-evento-id="${eventoId}"]`);
-      let valorSeleccionado = 0;
-
-      estrellas.forEach((estrella) => {
-        // Hover effect
-        estrella.addEventListener('mouseenter', () => {
-          const valor = parseInt(estrella.getAttribute('data-valor') || '0', 10);
-          estrellas.forEach((e, idx) => {
-            const activo = idx < valor;
-            e.style.color = activo ? '#FFD700' : '#ddd';
-            e.style.transform = activo ? 'scale(1.2)' : 'scale(1)';
-          });
-        });
-
-        // Click para seleccionar
-        estrella.addEventListener('click', () => {
-          valorSeleccionado = parseInt(estrella.getAttribute('data-valor') || '0', 10);
-          estrellas.forEach((e, idx) => {
-            const activo = idx < valorSeleccionado;
-            e.style.color = activo ? '#FFD700' : '#ddd';
-            if (activo) { e.classList.add('seleccionada'); } else { e.classList.remove('seleccionada'); }
-          });
-          if (btnEnviar) btnEnviar.style.display = 'inline-block';
-        });
-      });
-
-      // Restaurar al salir
-      container.addEventListener('mouseleave', () => {
-        estrellas.forEach((e, idx) => {
-          const activo = idx < valorSeleccionado;
-          e.style.color = activo ? '#FFD700' : '#ddd';
-          e.style.transform = 'scale(1)';
-        });
-      });
-
-      // Enviar valoración
-      if (btnEnviar) {
-        btnEnviar.addEventListener('click', async () => {
-          if (valorSeleccionado === 0) {
-            mostrarMensajeError('Por favor seleccioná una calificación');
+          if (!evento) {
+            mostrarMensajeError('Evento no encontrado');
             return;
           }
-
-          const userId = localStorage.getItem('userId') || localStorage.getItem('currentUserId');
-          if (!userId) return;
-
-          try {
-            await saveToFirestore(
-              'valoraciones',
-              { eventoId, userId, estrellas: valorSeleccionado, fecha: new Date().toISOString() },
-              `${userId}_${eventoId}`
-            );
-            mostrarMensajeExito(`¡Valoración enviada: ${valorSeleccionado} estrellas!`);
-            // Ocultar sistema de valoración (evitar nested template literal issues)
-            const htmlValor = '<p style="color:#4CAF50;font-size:0.9em;margin:8px 0;">✓ Tu valoración: ' +
-              '★'.repeat(valorSeleccionado) + '☆'.repeat(5 - valorSeleccionado) + '</p>';
-            container.parentElement.innerHTML = htmlValor;
-          } catch (err) {
-            console.error(err);
-            mostrarMensajeError('No se pudo enviar la valoración');
-          }
-        });
-      }
-    });
-
-    // Botón ver participantes (solo para organizadores de eventos futuros)
-    historialContent.querySelectorAll('.participantes-toggle').forEach(btn => {
-      btn.addEventListener('click', async function() {
-        const section = this.closest('.participantes-section');
-        const lista = section.querySelector('.participantes-lista');
-        const eventoId = section.getAttribute('data-evento-id');
-
-        if (lista.style.display === 'none') {
-          try {
-            const evento = await getFromFirestore('eventos', eventoId);
-            if (!evento || !Array.isArray(evento.participantes)) {
-              lista.innerHTML = '<p>No hay participantes aún.</p>';
-            } else {
-              let html = '<ul style="list-style:none;padding:8px 0;margin:0;">';
-              for (const pId of evento.participantes) {
-                const perfil = await getFromFirestore('perfiles', pId);
-                const usuario = await getFromFirestore('usuarios', pId);
-                const nombre = perfil?.nombre || usuario?.nombre || pId;
-                const apellido = perfil?.apellido || usuario?.apellido || '';
-                html += `<li style="padding:4px 0;">👤 ${nombre} ${apellido}</li>`;
-              }
-              html += '</ul>';
-              lista.innerHTML = html;
-            }
-            lista.style.display = 'block';
-            this.textContent = 'Ocultar participantes';
-          } catch (err) {
-            console.error(err);
-            lista.innerHTML = '<p>Error cargando participantes.</p>';
-            lista.style.display = 'block';
-          }
-        } else {
-          lista.style.display = 'none';
-          this.textContent = 'Ver participantes';
-        }
-      });
-    });
-  }
-
-  // Inicializar historial si estamos en perfil.html
-  if (historialContent) {
-    (async () => {
-      cacheHistorial = await cargarHistorial();
-      renderHistorial(cacheHistorial, 'todos');
-
-      // Tabs de filtro
-      document.querySelectorAll('.historial-tab').forEach(tab => {
-        tab.addEventListener('click', () => {
-          document.querySelectorAll('.historial-tab').forEach(t => t.classList.remove('active'));
-          tab.classList.add('active');
-          const tipo = tab.getAttribute('data-tipo') || 'todos';
-          renderHistorial(cacheHistorial, tipo);
-        });
-      });
-
-      // Modal confirmación de borrado - configurar handlers
-      const modalConf = document.querySelector('#modal-confirmar-borrado');
-      const btnCancelarB = document.querySelector('#btn-cancelar-borrado');
-      const btnConfirmarB = document.querySelector('#btn-confirmar-borrado');
-
-      // ✅ VALIDACIÓN DOM (Prioridad ALTA)
-      if (!modalConf) {
-        console.warn('⚠️ Modal de confirmación (#modal-confirmar-borrado) no encontrado');
-        return; // No ejecutar si no existe el modal
-      }
-
-      const cerrarModalBorrar = () => {
-        if (modalConf) {
-          modalConf.dataset.eventoId = '';
-          modalConf.style.display = 'none';
-          document.body.classList.remove('modal-open');
-        }
-      };
-
-      if (btnCancelarB && !btnCancelarB.dataset.bound) {
-        btnCancelarB.dataset.bound = 'true';
-        btnCancelarB.addEventListener('click', cerrarModalBorrar);
-      }
-
-      // Cerrar confirmación al hacer clic fuera
-      if (modalConf && !modalConf.dataset.boundOutside) {
-        modalConf.dataset.boundOutside = 'true';
-        modalConf.addEventListener('click', (e) => {
-          if (e.target === modalConf) cerrarModalBorrar();
-        });
-      }
-
-      if (btnConfirmarB && !btnConfirmarB.dataset.boundConfirm) {
-        btnConfirmarB.dataset.boundConfirm = 'true';
-        btnConfirmarB.addEventListener('click', async () => {
-          const id = modalConf.dataset.eventoId;
-          if (!id) return;
           
-          try {
-            // ✅ VALIDACIÓN DE PERMISOS (Prioridad BAJA)
-            const eventoABorrar = await getFromFirestore('eventos', id);
-            const userIdLocal = localStorage.getItem('userId') || localStorage.getItem('currentUserId');
-            
-            if (!eventoABorrar) {
-              mostrarMensajeError('Evento no encontrado');
-              cerrarModalBorrar();
-              return;
-            }
-            
-            if (eventoABorrar.organizadorId !== userIdLocal) {
-              mostrarMensajeError('⛔ Solo el organizador puede borrar este evento');
-              cerrarModalBorrar();
-              return;
-            }
-            
-            // 1) Borrar evento
-            await deleteFromFirestore('eventos', id);
-            // 2) Borrar entradas de historial relacionadas a este usuario-evento
-            const todos = await getFromFirestore('historial');
-            const relacionados = (todos || []).filter(h => typeof h.id === 'string' && h.id.startsWith(`${userIdLocal}_${id}_`));
-            for (const h of relacionados) {
-              await deleteFromFirestore('historial', h.id);
-            }
-            mostrarMensajeExito('Evento borrado definitivamente');
-          } catch (err) {
-            console.error(err);
-            mostrarMensajeError('No se pudo borrar el evento');
-          } finally {
-            cerrarModalBorrar();
-            // Recargar historial
-            cacheHistorial = await cargarHistorial();
-            const activeTab = document.querySelector('.historial-tab.active');
-            const tipo = activeTab ? activeTab.getAttribute('data-tipo') : 'todos';
-            renderHistorial(cacheHistorial, tipo);
+          const participantes = Array.isArray(evento.participantes) ? evento.participantes : [];
+          const unidos = Number(evento.unidos || 0);
+          const max = Number(evento.maxPersonas || 0);
+          
+          if (unidos >= max) {
+            mostrarMensajeError('El evento está completo');
+            return;
           }
+          
+          if (participantes.includes(userId)) {
+            mostrarMensajeError('Ya estás participando en este evento');
+            return;
+          }
+          
+          // Actualizar evento
+          participantes.push(userId);
+          const eventoActualizado = {
+            ...evento,
+            participantes,
+            unidos: unidos + 1
+          };
+          await saveToFirestore('eventos', eventoActualizado, eventoId);
+          
+          // Agregar al historial
+          const historialData = {
+            eventoId,
+            tipo: 'unido',
+            titulo: evento.titulo,
+            descripcion: evento.descripcion,
+            fecha: evento.fecha,
+            hora: evento.hora,
+            ubicacion: evento.ubicacion,
+            linkGrupo: evento.linkGrupo,
+            maxPersonas: evento.maxPersonas,
+            unidos: evento.unidos,
+            organizadorId: evento.organizadorId,
+            fechaUnion: new Date().toISOString()
+          };
+          await saveToFirestore('historial', historialData, `${userId}_${eventoId}_unido`);
+          
+          mostrarMensajeExito('¡Te uniste al evento!');
+          
+          // Recargar la página para actualizar la UI
+          setTimeout(() => location.reload(), 1000);
+          
+        } catch (error) {
+          console.error('Error uniéndose al evento:', error);
+          mostrarMensajeError('Error al unirse al evento');
+        }
+      });
+    });
+    
+    // BOTONES DE NO PARTICIPAR (SALIR)
+    const btnsSalir = document.querySelectorAll('.inicio-btn-salir, .favoritos-btn-salir, .perfil-btn-salir');
+    btnsSalir.forEach(btn => {
+      btn.addEventListener('click', async function(e) {
+        e.preventDefault();
+        e.stopPropagation();
+        
+        if (!userId) return;
+        
+        const eventoId = this.dataset.eventoId;
+        
+        try {
+          const evento = await getFromFirestore('eventos', eventoId);
+          if (!evento) {
+            mostrarMensajeError('Evento no encontrado');
+            return;
+          }
+          
+          const participantes = Array.isArray(evento.participantes) ? evento.participantes : [];
+          const unidos = Number(evento.unidos || 0);
+          
+          if (!participantes.includes(userId)) {
+            mostrarMensajeError('No estás participando en este evento');
+            return;
+          }
+          
+          // Actualizar evento
+          const nuevosParticipantes = participantes.filter(p => p !== userId);
+          const eventoActualizado = {
+            ...evento,
+            participantes: nuevosParticipantes,
+            unidos: Math.max(0, unidos - 1)
+          };
+          await saveToFirestore('eventos', eventoActualizado, eventoId);
+          
+          // Eliminar del historial
+          try {
+            await deleteFromFirestore('historial', `${userId}_${eventoId}_unido`);
+          } catch (e) {
+            console.warn('No se pudo eliminar del historial:', e);
+          }
+          
+          mostrarMensajeExito('Has dejado el evento');
+          
+          // Recargar la página
+          setTimeout(() => location.reload(), 1000);
+          
+        } catch (error) {
+          console.error('Error saliendo del evento:', error);
+          mostrarMensajeError('Error al salir del evento');
+        }
+      });
+    });
+  };
+
+  const bindFavoritosButtons = () => {
+    bindEventoButtons(); // Reutilizar la misma lógica
+  };
+
+  // Cerrar sesión global (fuera del DOMContentLoaded para que esté disponible siempre)
+  const cerrarSesionHandler = (e) => {
+    if (e) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
+    localStorage.removeItem('currentUserId');
+    localStorage.removeItem('userId');
+    localStorage.removeItem('currentUserName');
+    localStorage.removeItem('userPhoto');
+    localStorage.removeItem('perfilEdad');
+    localStorage.removeItem('perfilSexo');
+    localStorage.removeItem('perfilDescripcion');
+    mostrarMensajeExito('Sesión cerrada exitosamente');
+    setTimeout(() => {
+      window.location.href = 'login.html';
+    }, 800);
+  };
+
+  // Vincular botones de cerrar sesión
+  const btnsCerrarSesion = document.querySelectorAll('#nav-cerrar-sesion, .nav-logout-btn, .btn-cerrar-sesion-simple');
+  btnsCerrarSesion.forEach(btn => {
+    if (btn) {
+      btn.addEventListener('click', cerrarSesionHandler);
+    }
+  });
+
+  // HISTORIAL DE EVENTOS EN PERFIL
+  const historialContent = document.getElementById('historial-content');
+  const historialTabs = document.querySelectorAll('.historial-tab');
+  
+  if (historialContent && historialTabs.length > 0) {
+    let filtroActual = 'todos';
+    
+    const cargarHistorial = async (filtro = 'todos') => {
+      // Mostrar estado de carga
+      if (historialContent) {
+        historialContent.innerHTML = '<p class="historial-cargando">Cargando historial...</p>';
+      }
+      try {
+        const userId = localStorage.getItem('userId') || localStorage.getItem('currentUserId');
+        if (!userId) {
+          historialContent.innerHTML = '<p class="centrado">Iniciá sesión para ver tu historial.</p>';
+          return;
+        }
+        
+        const todosHistorial = await getFromFirestore('historial');
+        
+        const miHistorial = (todosHistorial || []).filter(h => {
+          const idCompleto = String(h.id);
+          return idCompleto.startsWith(userId + '_');
+        });
+        
+        await renderHistorial(miHistorial, filtro);
+        
+      } catch (error) {
+        console.error('Error cargando historial:', error);
+        historialContent.innerHTML = '<p class="centrado">Error al cargar el historial.</p>';
+      }
+    };
+    
+    const renderHistorial = async (items, tipoFiltro = 'todos') => {
+      // Filtrar por tipo
+      let filtrados = items;
+      
+      if (tipoFiltro === 'creado') {
+        filtrados = items.filter(item => item.tipo === 'creado');
+      } else if (tipoFiltro === 'unido') {
+        filtrados = items.filter(item => item.tipo === 'unido');
+      } else if (tipoFiltro === 'finalizado') {
+        filtrados = items.filter(item => {
+          const fechaEvento = construirFechaHora(item);
+          return fechaEvento && new Date() >= fechaEvento;
         });
       }
-
-      // Modal edición de evento
-      const modal = document.querySelector('#modal-editar-evento');
-      const formEditar = document.querySelector('#form-editar-evento');
-      const inputId = document.querySelector('#edit-evento-id');
-      const inputTitulo = document.querySelector('#edit-titulo');
-      const inputDesc = document.querySelector('#edit-descripcion');
-      const inputFecha = document.querySelector('#edit-fecha');
-      const inputHora = document.querySelector('#edit-hora');
-      const inputUbicacion = document.querySelector('#edit-ubicacion');
-      const inputMax = document.querySelector('#edit-maxPersonas');
-      const btnCancelarEd = document.querySelector('#btn-cancelar-edicion');
-
-      // ✅ VALIDACIÓN DOM (Prioridad ALTA)
-      if (!modal) {
-        console.warn('⚠️ Modal de edición (#modal-editar-evento) no encontrado en el DOM');
-        return; // Detener ejecución si modal no existe
+      
+      // Separar en activos y pasados
+      const activos = [];
+      const pasados = [];
+      
+      for (const item of filtrados) {
+        const fechaEvento = construirFechaHora(item);
+        if (fechaEvento && new Date() >= fechaEvento) {
+          pasados.push(item);
+        } else {
+          activos.push(item);
+        }
       }
-      if (!formEditar) {
-        console.warn('⚠️ Formulario de edición (#form-editar-evento) no encontrado');
+      
+      if (filtrados.length === 0) {
+        historialContent.innerHTML = '<p class="centrado">No hay eventos en esta categoría.</p>';
         return;
       }
-
-      const abrirModal = () => {
-        if (!modal) return;
-        modal.style.display = 'flex';
-        document.body.classList.add('modal-open');
-      };
-      const cerrarModal = () => {
-        if (!modal) return;
-        modal.style.display = 'none';
-        document.body.classList.remove('modal-open');
-      };
-
-      if (btnCancelarEd && !btnCancelarEd.dataset.bound) {
-        btnCancelarEd.dataset.bound = 'true';
-        btnCancelarEd.addEventListener('click', cerrarModal);
+      
+      // Renderizar cada item
+      const htmlPartsActivos = await Promise.all(activos.map(item => renderHistorialItem(item, false)));
+      const htmlPartsPasados = await Promise.all(pasados.map(item => renderHistorialItem(item, true)));
+      
+      let html = '';
+      if (htmlPartsActivos.length > 0) {
+        html += htmlPartsActivos.join('');
+      }
+      if (htmlPartsPasados.length > 0) {
+        html += htmlPartsPasados.join('');
+      }
+      
+      historialContent.innerHTML = html;
+      bindHistorialButtons();
+    };
+    
+    async function renderHistorialItem(item, esPasado) {
+      const userId = localStorage.getItem('userId') || localStorage.getItem('currentUserId');
+      const esCreado = item.tipo === 'creado';
+      const esUnido = item.tipo === 'unido';
+      const esFinalizado = item.tipo === 'finalizado';
+      const fechaEvento = construirFechaHora(item);
+      const esFuturo = fechaEvento && fechaEvento > new Date();
+      // Cargar datos del evento para mostrar promedio de valoraciones
+      let eventoDoc = null;
+      try {
+        if (item.eventoId) {
+          eventoDoc = await getFromFirestore('eventos', item.eventoId);
+        }
+      } catch (e) {
+        // ignorar
+      }
+      
+      let fechaMostrar = item.fecha || '';
+      let horaMostrar = item.hora || '';
+      
+      // Determinar acciones según estado y rol
+      let botonesAccion = '';
+      
+      if (!esPasado && esFuturo) {
+        // Evento futuro: organizador puede editar/borrar, participante puede salir
+        if (esCreado) {
+          botonesAccion = `
+            <div class="historial-actions">
+              <button class="btn-editar-evento btn-base btn-secondary" data-id="${item.eventoId}" title="Editar evento">Editar</button>
+              <button class="btn-borrar-evento btn-base btn-danger" data-id="${item.eventoId}" title="Borrar evento">Borrar</button>
+            </div>
+          `;
+        } else if (esUnido) {
+          botonesAccion = `
+            <div class="historial-actions">
+              <button class="btn-no-participar btn-base btn-danger" data-id="${item.eventoId}" title="No participar">No participar</button>
+            </div>
+          `;
+        }
+      } else if (esPasado && !esCreado) {
+        // Evento pasado: solo participantes (no organizadores) pueden valorar
+        // Verificar si ya valoró este evento
+        const valoracionId = `${userId}_${item.eventoId}`;
+        let valoracionExistente = null;
+        try {
+          valoracionExistente = await getFromFirestore('valoraciones', valoracionId);
+        } catch (e) {
+          // No existe valoración
+        }
+  
+        if (valoracionExistente && valoracionExistente.estrellas) {
+          // Ya valoró: mostrar valoración existente
+          const estrellas = valoracionExistente.estrellas;
+          botonesAccion = `
+            <div class="historial-valoracion">
+              <p style="margin:8px 0 4px;font-size:0.9em;color:#4CAF50;">✔ Tu valoración: ${'★'.repeat(estrellas)}${'☆'.repeat(5-estrellas)}</p>
+            </div>
+          `;
+        } else {
+          // Aún no valoró: mostrar sistema de estrellas
+          botonesAccion = `
+            <div class="historial-valoracion">
+              <p style="margin:8px 0 4px;font-size:0.9em;color:#666;">¿Cómo fue tu experiencia?</p>
+              <div class="estrellas-container" data-evento-id="${item.eventoId}">
+                ${[1,2,3,4,5].map(i => `<span class="estrella" data-valor="${i}">★</span>`).join('')}
+              </div>
+              <button class="btn-enviar-valoracion btn-base btn-primary" data-evento-id="${item.eventoId}" style="margin-top:8px;display:none;">Enviar valoración</button>
+            </div>
+          `;
+        }
+      }
+  
+      // Calcular bloque de promedio de valoraciones
+      let bloquePromedio = '';
+      const cantVal = Number(eventoDoc?.cantidadValoraciones || 0);
+      const prom = Number(eventoDoc?.valoracionPromedio || 0);
+      if (cantVal > 0 && (esCreado || (esPasado && !esCreado))) {
+        const estrellasLlenas = Math.round(prom);
+        bloquePromedio = `
+          <div class="historial-valoracion">
+            <p style="margin:8px 0 0;color:#444;font-size:0.95em;">
+              Promedio: ${'★'.repeat(estrellasLlenas)}${'☆'.repeat(5 - estrellasLlenas)}
+              <span style="color:#777;">(${prom.toFixed(1)} de ${cantVal})</span>
+            </p>
+          </div>`;
       }
 
-      // Cerrar al hacer clic fuera del contenido
-      if (modal && !modal.dataset.boundOutside) {
-        modal.dataset.boundOutside = 'true';
-        modal.addEventListener('click', (e) => {
-          if (e.target === modal) cerrarModal();
+      return `
+        <div class="historial-item${esPasado ? ' historial-pasado' : ''}" style="${esPasado ? 'opacity:0.6;filter:grayscale(0.3);' : ''}">
+          <div class="historial-header">
+            <h4>${item.titulo || 'Sin título'}</h4>
+            ${botonesAccion}
+          </div>
+          <div class="historial-detalles">
+            ${item.descripcion ? `<p>${item.descripcion}</p>` : ''}
+            <div class="historial-info">
+              ${fechaMostrar ? `<span><img src="img/calendario.png" alt="Fecha" style="width:16px;height:16px;vertical-align:middle;margin-right:6px;">${fechaMostrar}</span>` : ''}
+              ${horaMostrar ? `<span><img src="img/reloj-circular.png" alt="Hora" style="width:16px;height:16px;vertical-align:middle;margin:0 6px 0 10px;">${horaMostrar}</span>` : ''}
+              ${item.ubicacion ? `<span><img src="img/ubicacion.png" alt="Ubicación" style="width:16px;height:16px;vertical-align:middle;margin:0 6px 0 10px;">${item.ubicacion}</span>` : ''}
+            </div>
+            ${item.organizador && !esCreado ? `<p class="historial-organizador">Organizado por: ${item.organizador}</p>` : ''}
+            ${item.participantes ? `<p class="historial-participantes">Participantes: ${item.participantes}</p>` : ''}
+            ${bloquePromedio}
+          </div>
+          ${esCreado && !esPasado ? `
+            <div class="participantes-section" data-evento-id="${item.eventoId}">
+              <button class="participantes-toggle btn-base btn-secondary">Ver participantes</button>
+              <div class="participantes-lista" style="display:none;"></div>
+            </div>
+          ` : ''}
+        </div>
+      `;
+    }
+  
+    const bindHistorialButtons = () => {
+      // Botón borrar evento
+      historialContent.querySelectorAll('.btn-borrar-evento').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const eventoId = btn.getAttribute('data-id');
+          if (!eventoId) return;
+          const modalConf = document.querySelector('#modal-confirmar-borrado');
+          if (!modalConf) return;
+          modalConf.dataset.eventoId = eventoId;
+          modalConf.style.display = 'flex';
+          document.body.classList.add('modal-open');
         });
-      }
-
-      // Cerrar con tecla Escape
-      if (!document.body.dataset.boundEscClose) {
-        document.body.dataset.boundEscClose = 'true';
-        document.addEventListener('keydown', (e) => {
-          if (e.key === 'Escape') {
-            const abiertos = document.querySelectorAll('.modal');
-            abiertos.forEach(m => {
-              if (m.style.display !== 'none') {
-                m.style.display = 'none';
-                document.body.classList.remove('modal-open');
-              }
-            });
+      });
+  
+      // Botón no participar
+      historialContent.querySelectorAll('.btn-no-participar').forEach(btn => {
+        btn.addEventListener('click', async () => {
+          const eventoId = btn.getAttribute('data-id');
+          const userId = localStorage.getItem('userId') || localStorage.getItem('currentUserId');
+          if (!eventoId || !userId) return;
+          
+          try {
+            const evento = await getFromFirestore('eventos', eventoId);
+            if (!evento || !Array.isArray(evento.participantes)) return;
+            
+            const nuevosParticipantes = evento.participantes.filter(pid => pid !== userId);
+            const nuevosUnidos = Math.max(0, (evento.unidos || 0) - 1);
+            
+            await saveToFirestore('eventos', { 
+              ...evento, 
+              participantes: nuevosParticipantes,
+              unidos: nuevosUnidos
+            }, eventoId);
+            
+            const historialId = `${userId}_${eventoId}_unido`;
+            await deleteFromFirestore('historial', historialId);
+            
+            mostrarMensajeExito('Has dejado de participar en el evento');
+            
+            const activeTab = document.querySelector('.historial-tab.active');
+            const tipo = activeTab ? activeTab.getAttribute('data-tipo') : 'todos';
+            await cargarHistorial(tipo);
+          } catch (err) {
+            console.error(err);
+            mostrarMensajeError('No se pudo dejar de participar');
           }
         });
-      }
+      });
+  
+      // Sistema de valoración con estrellas
+      historialContent.querySelectorAll('.estrellas-container').forEach(container => {
+        const estrellas = container.querySelectorAll('.estrella');
+        const eventoId = container.getAttribute('data-evento-id');
+        const btnEnviar = historialContent.querySelector(`.btn-enviar-valoracion[data-evento-id="${eventoId}"]`);
+        let valorSeleccionado = 0;
+  
+        estrellas.forEach(estrella => {
+          // Hover effect
+          estrella.addEventListener('mouseenter', function() {
+            const valor = parseInt(this.getAttribute('data-valor'));
+            estrellas.forEach((e, i) => {
+              e.classList.toggle('seleccionada', i < valor);
+            });
+          });
+  
+          // Click para seleccionar
+          estrella.addEventListener('click', function() {
+            valorSeleccionado = parseInt(this.getAttribute('data-valor'));
+            estrellas.forEach((e, i) => {
+              e.classList.toggle('seleccionada', i < valorSeleccionado);
+            });
+            if (btnEnviar) {
+              btnEnviar.style.display = 'inline-block';
+            }
+          });
+        });
+  
+        // Reset on mouse leave
+        container.addEventListener('mouseleave', function() {
+          estrellas.forEach((e, i) => {
+            e.classList.toggle('seleccionada', i < valorSeleccionado);
+          });
+        });
+  
+        // Enviar valoración
+        if (btnEnviar) {
+          btnEnviar.addEventListener('click', async function() {
+            if (valorSeleccionado === 0) {
+              mostrarMensajeError('Por favor selecciona al menos una estrella');
+              return;
+            }
+  
+            const userId = localStorage.getItem('userId') || localStorage.getItem('currentUserId');
+            if (!userId) return;
+  
+            try {
+              const valoracionId = `${userId}_${eventoId}`;
+              const valoracion = {
+                userId,
+                eventoId,
+                estrellas: valorSeleccionado,
+                fecha: new Date().toISOString()
+              };
+  
+              await saveToFirestore('valoraciones', valoracion, valoracionId);
+  
+              // Actualizar promedio del evento
+              const todasValoraciones = await getFromFirestore('valoraciones');
+              const valoracionesEvento = (todasValoraciones || []).filter(v => v.eventoId === eventoId);
+              const promedio = valoracionesEvento.reduce((sum, v) => sum + v.estrellas, 0) / valoracionesEvento.length;
+  
+              const evento = await getFromFirestore('eventos', eventoId);
+              if (evento) {
+                await saveToFirestore('eventos', {
+                  ...evento,
+                  valoracionPromedio: promedio,
+                  cantidadValoraciones: valoracionesEvento.length
+                }, eventoId);
+              }
+  
+              mostrarMensajeExito('¡Gracias por tu valoración!');
+  
+              // Recargar historial
+              const activeTab = document.querySelector('.historial-tab.active');
+              const tipo = activeTab ? activeTab.getAttribute('data-tipo') : 'todos';
+              await cargarHistorial(tipo);
+            } catch (error) {
+              console.error('Error guardando valoración:', error);
+              mostrarMensajeError('Error al guardar la valoración');
+            }
+          });
+        }
+      });
+  
+      // Toggle ver participantes para eventos creados (activos)
+      historialContent.querySelectorAll('.participantes-toggle').forEach(btn => {
+        btn.addEventListener('click', async function() {
+          const section = this.closest('.participantes-section');
+          if (!section) return;
+          const lista = section.querySelector('.participantes-lista');
+          const eventoId = section.getAttribute('data-evento-id');
+          if (!lista || !eventoId) return;
 
-      // Bind botones editar
-      const bindEditarButtons = () => {
-        historialContent.querySelectorAll('.btn-editar-evento').forEach(btn => {
-          if (btn.dataset.bound) return;
-          btn.dataset.bound = 'true';
-          btn.addEventListener('click', async () => {
-            const id = btn.getAttribute('data-id');
-            if (!id) return;
-            
-            const ev = await getFromFirestore('eventos', id);
-            if (!ev) {
+          const isHidden = !lista.style.display || lista.style.display === 'none';
+          if (isHidden) {
+            this.textContent = 'Ocultar participantes';
+            lista.style.display = 'block';
+            if (!lista.dataset.loaded) {
+              // Cargar participantes
+              lista.innerHTML = '<p style="color:#777;font-size:0.9em;">Cargando participantes...</p>';
+              try {
+                const evento = await getFromFirestore('eventos', eventoId);
+                const participantes = Array.isArray(evento?.participantes) ? evento.participantes : [];
+                if (participantes.length === 0) {
+                  lista.innerHTML = '<p style="color:#777;font-size:0.9em;">Todavía no hay participantes.</p>';
+                } else {
+                  const items = await Promise.all(participantes.map(async pid => {
+                    try {
+                      const [usuario, perfil] = await Promise.all([
+                        getFromFirestore('usuarios', pid),
+                        getFromFirestore('perfiles', pid)
+                      ]);
+                      const nombre = (perfil?.nombre || usuario?.nombre || 'Usuario').toString();
+                      const apellido = (perfil?.apellido || usuario?.apellido || '').toString();
+                      const edad = perfil?.edad ? `${perfil.edad}` : '';
+                      const sexo = perfil?.sexo || '';
+                      const extra = [edad && `${edad} años`, sexo].filter(Boolean).join(' • ');
+                      const foto = (perfil?.fotoUrl || '').replace(/"/g, '&quot;') || 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><circle cx="50" cy="50" r="48" fill="%23e6e6e6"/><circle cx="50" cy="38" r="18" fill="%23bdbdbd"/><path d="M20 80c6-14 24-18 30-18s24 4 30 18" fill="%23bdbdbd"/></svg>';
+                      const altTxt = `${nombre} ${apellido}`.replace(/"/g, '&quot;');
+                      return `
+                        <div class='participante-item'>
+                          <img class='participante-foto' src='${foto}' alt='${altTxt}'>
+                          <div class="participante-info">
+                            <div class='participante-nombre'>${nombre} ${apellido}</div>
+                            ${extra ? `<div class='participante-extra'>${extra}</div>` : ''}
+                          </div>
+                        </div>
+                      `;
+                    } catch {
+                      return '';
+                    }
+                  }));
+                  lista.innerHTML = items.filter(Boolean).join('');
+                }
+                lista.dataset.loaded = '1';
+              } catch (e) {
+                lista.innerHTML = '<p style="color:#b00;font-size:0.9em;">No se pudieron cargar los participantes.</p>';
+              }
+            }
+          } else {
+            this.textContent = 'Ver participantes';
+            lista.style.display = 'none';
+          }
+        });
+      });
+
+      // Botón editar evento
+      historialContent.querySelectorAll('.btn-editar-evento').forEach(btn => {
+        btn.addEventListener('click', async function(e) {
+          e.preventDefault();
+          const eventoId = this.getAttribute('data-id');
+          
+          try {
+            const evento = await getFromFirestore('eventos', eventoId);
+            if (!evento) {
               mostrarMensajeError('Evento no encontrado');
               return;
             }
             
-            // ✅ VALIDACIÓN DE PERMISOS (Prioridad BAJA)
-            const userIdLocal = localStorage.getItem('userId') || localStorage.getItem('currentUserId');
-            if (ev.organizadorId !== userIdLocal) {
-              mostrarMensajeError('⛔ Solo el organizador puede editar este evento');
-              return;
+            // Llenar modal de edición
+            document.getElementById('edit-evento-id').value = eventoId;
+            document.getElementById('edit-titulo').value = evento.titulo || '';
+            document.getElementById('edit-descripcion').value = evento.descripcion || '';
+            document.getElementById('edit-fecha').value = evento.fecha || '';
+            document.getElementById('edit-hora').value = evento.hora || '';
+            document.getElementById('edit-ubicacion').value = evento.ubicacion || '';
+            document.getElementById('edit-link-grupo').value = evento.linkGrupo || '';
+            document.getElementById('edit-maxPersonas').value = evento.maxPersonas || '';
+            
+            // Mostrar modal
+            const modal = document.getElementById('modal-editar-evento');
+            if (modal) {
+              modal.style.display = 'flex';
+              document.body.classList.add('modal-open');
             }
-            
-            inputId.value = id;
-            inputTitulo.value = ev.titulo || '';
-            inputDesc.value = ev.descripcion || '';
-            
-            // Normalizar fecha (yyyy-mm-dd) y hora (HH:MM)
-            const fechaISO = ev.fecha ? new Date(ev.fecha) : null;
-            if (fechaISO && !isNaN(fechaISO)) {
-              const y = fechaISO.getFullYear();
-              const m = String(fechaISO.getMonth()+1).padStart(2,'0');
-              const d = String(fechaISO.getDate()).padStart(2,'0');
-              inputFecha.value = `${y}-${m}-${d}`;
-            } else {
-              // Si ev.fecha ya está en formato yyyy-mm-dd lo usamos tal cual
-              inputFecha.value = (ev.fecha && /^\d{4}-\d{2}-\d{2}$/.test(ev.fecha)) ? ev.fecha : '';
-            }
-
-            if (ev.hora) {
-              const hhmm = ev.hora.match(/\d{2}:\d{2}/)?.[0] || '';
-              inputHora.value = hhmm;
-            } else {
-              inputHora.value = '';
-            }
-            inputUbicacion.value = ev.ubicacion || '';
-            
-            // Cargar link de grupo si existe
-            const editLinkGrupoInput = document.getElementById('edit-link-grupo');
-            if (editLinkGrupoInput) editLinkGrupoInput.value = ev.linkGrupo || '';
-            
-            inputMax.value = ev.maxPersonas || 1;
-
-            // Restringir fechas pasadas y, si es hoy, horas pasadas
-            const pad2Local = (n) => String(n).padStart(2, '0');
-            const todayLocalISO = () => {
-              const d = new Date();
-              return `${d.getFullYear()}-${pad2Local(d.getMonth() + 1)}-${pad2Local(d.getDate())}`;
-            };
-            const nowLocalHHmm = () => {
-              const d = new Date();
-              return `${pad2Local(d.getHours())}:${pad2Local(d.getMinutes())}`;
-            };
-            if (inputFecha) inputFecha.min = todayLocalISO();
-            if (inputFecha && inputHora) {
-              inputFecha.addEventListener('change', () => {
-                if (inputFecha.value === todayLocalISO()) {
-                  inputHora.min = nowLocalHHmm();
-                } else {
-                  inputHora.removeAttribute('min');
-                }
-              });
-            }
-            abrirModal();
-          });
-        });
-      };
-      
-      bindEditarButtons();
-
-      if (formEditar && !formEditar.dataset.bound) {
-        formEditar.dataset.bound = 'true';
-        formEditar.onsubmit = async (e) => {
-          e.preventDefault();
-          const id = inputId.value;
-          if (!id) return;
-          try {
-            // Normalizar fecha/hora desde el editor (permite DD/MM/AAAA)
-            const fechaEdit = normalizarFecha(inputFecha.value);
-            const horaEdit = normalizarHora(inputHora.value);
-            if (!fechaEdit || !horaEdit) {
-              mostrarMensajeError('Fecha u hora inválida. Usa formato DD/MM/AAAA y HH:mm');
-              return;
-            }
-            const fh = new Date(`${fechaEdit}T${horaEdit}`);
-            if (isNaN(fh.getTime())) {
-              mostrarMensajeError('Fecha/hora no válida');
-              return;
-            }
-            const ahora2 = new Date();
-            if (fh <= ahora2) {
-              mostrarMensajeError('La fecha y hora deben ser futuras');
-              return;
-            }
-            
-            // Obtener evento actual y mantener campos que no se editan
-            const eventoActual = await getFromFirestore('eventos', id);
-            
-            // Obtener datos del formulario
-            const editLinkGrupoInput = document.getElementById('edit-link-grupo');
-            const linkGrupo = editLinkGrupoInput?.value?.trim() || '';
-            
-            const payload = {
-              ...eventoActual,
-              titulo: inputTitulo.value.trim(),
-              descripcion: inputDesc.value.trim(),
-              fecha: fechaEdit,
-              hora: horaEdit,
-              ubicacion: inputUbicacion.value.trim(),
-              linkGrupo: linkGrupo,
-              maxPersonas: parseInt(inputMax.value, 10) || 1,
-              fechaHoraEvento: fh.toISOString()
-            };
-            await saveToFirestore('eventos', payload, id);
-            mostrarMensajeExito('Evento actualizado');
-            cerrarModal();
-            
-            // Recargar historial
-            cacheHistorial = await cargarHistorial();
-            const activeTab = document.querySelector('.historial-tab.active');
-            const tipo = activeTab ? activeTab.getAttribute('data-tipo') : 'todos';
-            renderHistorial(cacheHistorial, tipo);
-            bindEditarButtons();
-          } catch (err) {
-            console.error(err);
-            mostrarMensajeError('No se pudo actualizar el evento');
+          } catch (error) {
+            console.error('Error cargando evento:', error);
+            mostrarMensajeError('Error al cargar el evento');
           }
-        };
-      }
-
-      // Bind participantes toggle
-      const bindParticipantesToggle = () => {
-        historialContent.querySelectorAll('.participantes-toggle').forEach(btn => {
-          if (btn.dataset.bound) return;
-          btn.dataset.bound = 'true';
-          btn.addEventListener('click', async () => {
-            const section = btn.closest('.participantes-section');
-            const lista = section.querySelector('.participantes-lista');
-            const eventoId = section.getAttribute('data-evento-id');
-            if (!lista || !eventoId) return;
-
-            if (lista.dataset.loaded !== '1') {
-              // Cargar evento y perfiles de participantes
-              const ev = await getFromFirestore('eventos', eventoId);
-              const participantes = Array.isArray(ev?.participantes) ? ev.participantes : [];
-              if (!participantes.length) {
-                lista.innerHTML = '<p style="color:#666;">Aún no hay participantes.</p>';
-              } else {
-                const items = [];
-                for (const pid of participantes) {
-                  const perfil = await getFromFirestore('perfiles', pid) || {};
-                  const nombre = [perfil.nombre || '', perfil.apellido || ''].filter(Boolean).join(' ');
-                  const edad = perfil.edad ? `${perfil.edad} años` : 'Edad no informada';
-                  const sexo = perfil.sexo || 'Sexo no informado';
-                  const foto = perfil.foto || '';
-                  items.push(`
-                    <div class="participante-item">
-                      <div class="participante-avatar">${foto ? `<img src="${foto}" alt="Foto" class="participante-foto" style="width:24px;height:24px;border-radius:50%;object-fit:cover;">` : `<img src="img/personas.png" alt="Participante" style="width:24px;height:24px;vertical-align:middle;">`}</div>
-                      <div class="participante-info">
-                        <div class="participante-nombre">${nombre || pid}</div>
-                        <div class="participante-extra">${edad} · ${sexo}</div>
-                      </div>
-                    </div>
-                  `);
-                }
-                lista.innerHTML = items.join('');
-              }
-              lista.dataset.loaded = '1';
-            }
-            // Toggle visual
-            const visible = lista.style.display !== 'none';
-            lista.style.display = visible ? 'none' : 'block';
-            btn.textContent = visible ? 'Ver participantes' : 'Ocultar participantes';
-          });
         });
-      };
+      });
+    };
+
+    // Vincular tabs del historial
+    if (historialTabs && historialTabs.length) {
+      historialTabs.forEach(tab => {
+        tab.addEventListener('click', function() {
+          historialTabs.forEach(t => t.classList.remove('active'));
+          this.classList.add('active');
+          filtroActual = this.getAttribute('data-tipo') || 'todos';
+          cargarHistorial(filtroActual);
+        });
+      });
+    }
+
+    // Carga inicial del historial
+    cargarHistorial('todos');
+    
+    // Bind form de edición
+    const formEditar = document.getElementById('form-editar-evento');
+    const btnCancelarEdicion = document.getElementById('btn-cancelar-edicion');
+    
+    if (formEditar && btnCancelarEdicion) {
+      formEditar.addEventListener('submit', async function(e) {
+        e.preventDefault();
+        
+        const eventoId = document.getElementById('edit-evento-id').value;
+        const titulo = document.getElementById('edit-titulo').value.trim();
+        const descripcion = document.getElementById('edit-descripcion').value.trim();
+        const fecha = document.getElementById('edit-fecha').value;
+        const hora = document.getElementById('edit-hora').value;
+        const ubicacion = document.getElementById('edit-ubicacion').value.trim();
+        const linkGrupo = document.getElementById('edit-link-grupo').value.trim();
+        const maxPersonas = parseInt(document.getElementById('edit-maxPersonas').value);
+        
+        try {
+          const evento = await getFromFirestore('eventos', eventoId);
+          if (!evento) {
+            mostrarMensajeError('Evento no encontrado');
+            return;
+          }
+          
+          const eventoActualizado = {
+            ...evento,
+            titulo,
+            descripcion,
+            fecha,
+            hora,
+            ubicacion,
+            linkGrupo,
+            maxPersonas,
+            fechaHoraEvento: new Date(`${fecha}T${hora}`).toISOString()
+          };
+          
+          await saveToFirestore('eventos', eventoActualizado, eventoId);
+          
+          mostrarMensajeExito('Evento actualizado exitosamente');
+          
+          // Cerrar modal
+          const modal = document.getElementById('modal-editar-evento');
+          if (modal) {
+            modal.style.display = 'none';
+            document.body.classList.remove('modal-open');
+          }
+          
+          // Recargar historial
+          setTimeout(() => cargarHistorial(filtroActual), 500);
+          
+        } catch (error) {
+          console.error('Error actualizando evento:', error);
+          mostrarMensajeError('Error al actualizar el evento');
+        }
+      });
       
-      bindParticipantesToggle();
-    })();
+      btnCancelarEdicion.addEventListener('click', function() {
+        const modal = document.getElementById('modal-editar-evento');
+        if (modal) {
+          modal.style.display = 'none';
+          document.body.classList.remove('modal-open');
+        }
+      });
+    }
+    
+    // Bind confirmación de borrado
+    const btnConfirmarBorrado = document.getElementById('btn-confirmar-borrado');
+    const btnCancelarBorrado = document.getElementById('btn-cancelar-borrado');
+    const modalConfirmar = document.getElementById('modal-confirmar-borrado');
+    
+    if (btnConfirmarBorrado && btnCancelarBorrado && modalConfirmar) {
+      btnConfirmarBorrado.addEventListener('click', async function() {
+        const eventoId = modalConfirmar.dataset.eventoId;
+        
+        try {
+          await deleteFromFirestore('eventos', eventoId);
+          
+          // Eliminar del historial de todos los usuarios
+          const historial = await getFromFirestore('historial');
+          const eliminaciones = historial
+            .filter(h => h.eventoId === eventoId)
+            .map(h => deleteFromFirestore('historial', h.id));
+          
+          await Promise.all(eliminaciones);
+          
+          mostrarMensajeExito('Evento eliminado exitosamente');
+          
+          // Cerrar modal
+          modalConfirmar.style.display = 'none';
+          document.body.classList.remove('modal-open');
+          
+          // Recargar historial
+          setTimeout(() => cargarHistorial(filtroActual), 500);
+          
+        } catch (error) {
+          console.error('Error eliminando evento:', error);
+          mostrarMensajeError('Error al eliminar el evento');
+        }
+      });
+      
+      btnCancelarBorrado.addEventListener('click', function() {
+        modalConfirmar.style.display = 'none';
+        document.body.classList.remove('modal-open');
+      });
+    }
   }
 
 }); // Fin DOMContentLoaded

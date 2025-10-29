@@ -7,7 +7,7 @@
   <link rel="stylesheet" href="css/styles.css">
   <meta name="firebase-config" content='{"apiKey":"AIzaSyAgufVX3sdXEzTJQC6ZTqv6Clh0Coo4A40","authDomain":"tfi-activa.firebaseapp.com","projectId":"tfi-activa","storageBucket":"tfi-activa.firebasestorage.app","messagingSenderId":"459768332837","appId":"1:459768332837:web:e28594decec0743631b5cc","measurementId":"G-5944BHTK50"}'>
 </head>
-<body>
+<body data-protected="true">
   <header class="header-principal">
     <div class="header-content">
       <a href="inicio.html">
@@ -23,12 +23,11 @@
       <a href="perfil.html">Perfil</a>
     </div>
     <div class="nav-right">
-      <a href="#" class="nav-logout-btn" id="nav-cerrar-sesion" style="display: none;">Cerrar Sesión</a>
+  <a href="#" class="nav-logout-btn" id="nav-cerrar-sesion">Cerrar Sesión</a>
       <button class="nav-menu-btn-inline" aria-label="Menú opciones">&#8942;</button>
     </div>
   </nav>
   <main class="crear-evento-main-nueva">
-    <!-- La verificación de sesión se realiza desde script.js -->
     <h1 class="crear-evento-titulo-nueva">Crear Nuevo Evento</h1>
   <form id="form-crear-evento" class="crear-evento-box-nueva" autocomplete="off">
       <label for="titulo" class="crear-evento-label-nueva">Título del Evento</label>
@@ -65,6 +64,5 @@
     TFI INGENIERIA EN SISTEMAS DE INFORMACION 2025. AUTORES : MAROSECK YELENKA Y RUIZ DIAZ LUCIANO
   </footer>
   <script type="module" src="script/script.js"></script>
-  <!-- Solo se mantiene la referencia a script.js -->
 </body>
 </html>

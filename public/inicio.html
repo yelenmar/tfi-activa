@@ -8,8 +8,8 @@
   <link rel="stylesheet" href="css/styles.css">
   <meta name="firebase-config" content='{"apiKey":"AIzaSyAgufVX3sdXEzTJQC6ZTqv6Clh0Coo4A40","authDomain":"tfi-activa.firebaseapp.com","projectId":"tfi-activa","storageBucket":"tfi-activa.firebasestorage.app","messagingSenderId":"459768332837","appId":"1:459768332837:web:e28594decec0743631b5cc","measurementId":"G-5944BHTK50"}'>
 </head>
-<body>
-  <header class="header-principal" style="position: relative;">
+<body data-protected="true">
+  <header class="header-principal">
     <div class="header-content">
       <a href="inicio.html">
         <img src="img/LOGO-removebg-preview.png" alt="Logo principal Activá" class="header-logo-centro">
@@ -29,7 +29,6 @@
     </div>
   </nav>
   <main class="main-container">
-    <!-- La verificación de sesión se realiza desde script.js -->
     <div class="fondo-animado"></div>
     <h1 class="inicio-titulo">Todos los Eventos</h1>
     <p class="inicio-subtitulo">
@@ -47,7 +46,7 @@
         <div id="eventos-loading">
           <p>Cargando eventos...</p>
         </div>
-        <div id="eventos-vacio" style="display: none;">
+  <div id="eventos-vacio">
           <p>No hay eventos disponibles en este momento.</p>
           <p><a href="crear-evento.html">¡Crea el primer evento!</a></p>
         </div>
@@ -57,6 +56,5 @@
     TFI INGENIERIA EN SISTEMAS DE INFORMACION 2025. AUTORES : MAROSECK YELENKA Y RUIZ DIAZ LUCIANO
   </footer>
   <script type="module" src="script/script.js"></script>
-  <!-- Solo se mantiene la referencia a script.js -->
 </body>
 </html>

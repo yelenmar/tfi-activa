@@ -8,7 +8,7 @@
   border-right: 2px solid var(--gray);
 }
 
-/* Línea verde y sombreado al final del footer */
+/* Footer: línea/sombra */
 .footer-tfi::after {
   content: "";
   display: block;
@@ -43,7 +43,7 @@
   filter: grayscale(1) brightness(0.7);
 }
 
-/* Botón compacto verde para organizador en inicio */
+/* Botón organizador */
 .inicio-btn-organizador {
   background: #003918;
   color: #fff;
@@ -58,7 +58,7 @@
   
 }
 
-/* Botón 'No participar' en favoritos - más rojo y hover bordo */
+/* Botón No participar */
 .favoritos-btn-salir, .inicio-btn-salir, .perfil-btn-salir {
   background: #c1121f;
   color: #fff;
@@ -74,7 +74,25 @@
 .favoritos-btn-salir:hover, .inicio-btn-salir:hover, .perfil-btn-salir:hover {
   background: #6a040f;
 }
-/* Botón 'Quitar' en favoritos - lila y hover más oscuro */
+
+/* Botón Unirse - Igual al No participar pero en verde */
+.favoritos-btn-unirse, .inicio-btn-unirse, .perfil-btn-unirse {
+  background: #003918;
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  font-weight: bold;
+  font-size: 0.98em;
+  padding: 0.38em 1.05em;
+  margin: 0.4em 0.15em 0.15em 0;
+  box-shadow: none;
+  transition: background 0.18s, box-shadow 0.18s;
+}
+.favoritos-btn-unirse:hover, .inicio-btn-unirse:hover, .perfil-btn-unirse:hover {
+  background: #002710;
+  box-shadow: 0 3px 12px rgba(0, 57, 24, 0.25);
+}
+/* Botón Quitar favorito */
 .favoritos-btn-quitar {
   background: #7850B4;
   color: #fff;
@@ -92,7 +110,7 @@
   box-shadow: 0 3px 12px rgba(120, 80, 180, 0.25);
 }
 
-/* Badge de participación */
+/* Badge Participando */
 .evento-participando-badge {
   display: inline-block;
   background: #e0e0e0;
@@ -107,7 +125,7 @@
   letter-spacing: 0.5px;
 }
 
-/* Botón Cerrar Sesión visual y accesible */
+/* Botón cerrar sesión */
 .btn-cerrar-sesion-simple {
   display: block;
   width: 100%;
@@ -132,7 +150,33 @@
   color: #003918;
   outline: none;
 }
-/* Menú simple de 3 puntitos en el nav */
+/* Botones base y primario (historial, valoración, etc.) */
+.btn-base {
+  display: inline-block;
+  padding: 10px 18px;
+  border-radius: 10px;
+  font-weight: 700;
+  border: none;
+  cursor: pointer;
+  transition: background 0.18s, box-shadow 0.18s, color 0.18s;
+}
+.btn-primary {
+  background: var(--violet);
+  color: #fff;
+  box-shadow: 0 3px 10px rgba(120, 80, 180, 0.25);
+}
+.btn-primary:hover {
+  background: #5b3a90;
+  box-shadow: 0 5px 14px rgba(120, 80, 180, 0.35);
+}
+.btn-primary:disabled,
+.btn-primary[disabled] {
+  background: #e9e5f2;
+  color: #9a86c6;
+  cursor: not-allowed;
+  box-shadow: none;
+}
+/* Menú 3 puntos (nav) */
 .nav-menu-simple {
   position: relative;
   display: inline-block;
@@ -185,7 +229,7 @@
 .btn-cerrar-sesion-simple:hover {
   background: #f5f5f5;
 }
-/* Botones de editar y eliminar evento en perfil */
+/* Botones editar/eliminar */
 .btn-editar-evento, .btn-eliminar-evento {
   background: var(--gray);
   color: var(--green-mid);
@@ -211,6 +255,14 @@
   padding: 10px 18px;
   font-weight: 700;
   cursor: pointer;
+}
+
+/* Valoraciones: texto promedio */
+.historial-valoracion .promedio-texto,
+.historial-promedio-texto {
+  margin-top: 6px;
+  font-size: 0.95em;
+  color: #5b5b5b;
 }
 
 /* FUERZA BRUTAL: Elimina ABSOLUTAMENTE TODOS los controles nativos del navegador */
@@ -483,12 +535,11 @@ form select {
 .perfil-form label,
 .perfil-row-doble label,
 .perfil-fila-sexo-edad label {
-  margin: var(--space-xs) 0 2px 0;
-  padding-left: 0;
+  margin: var(--space-xs) 0 6px 0;
+  padding: 0;
   text-align: left;
-  padding: 0 24px;
-  background: var(--green-dark);
-  box-shadow: var(--shadow-md);
+  background: transparent;
+  box-shadow: none;
 }
 
 /* Botón secundario (cancelar, volver) */
@@ -500,6 +551,30 @@ form select {
 .btn-secondary:hover {
   background: var(--gray-medium);
   box-shadow: var(--shadow-md);
+}
+
+/* Botones de foto en perfil: lila con hover lila más claro */
+.perfil-form-foto-centro .btn-secondary {
+  background: var(--violet);
+  color: #fff;
+  border: 1px solid var(--violet);
+  font-weight: 600;
+}
+.perfil-form-foto-centro .btn-secondary:hover {
+  background: #9b8fd9; /* lila más claro */
+  border-color: #9b8fd9;
+  box-shadow: var(--shadow-md);
+}
+
+.perfil-form-foto-botones {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+.historial-cargando {
+  color: #888;
 }
 
 /* Botón de peligro (eliminar) */
@@ -1220,7 +1295,7 @@ form input[type="tel"] {
   border-radius: 10px;
   background: #eaf2ff;
   color: var(--green-dark);
-  border: 1.5px solid var(--gray);
+  border: 1.5px solid #e0e0e0;
 }
 
 .registro-input-box .btn-verificar {
@@ -1246,11 +1321,10 @@ form input[type="tel"] {
 }
 
 .tab-selector {
-  margin-bottom: 8px;
-  width: 100%;
   display: flex;
   gap: 0;
-  justify-content: center;
+  margin-bottom: 1em;
+  width: 100%;
 }
 
 .tab-btn {
@@ -1289,24 +1363,13 @@ form input[type="tel"] {
   align-items: stretch;
 }
 
-/* Hace más ancho el input de nombre en el formulario de perfil */
-#perfil-form input[type="text"] {
-  width: 99%;
-  max-width: 99%;
-  min-width: 350px;
-  box-sizing: border-box;
-  padding: 10px 14px;
-  font-size: 1.08em;
-  margin-top: 2px;
-  margin-bottom: 0.4em;
-}
-
-/* Hace más anchos los inputs de Edad y Descripción en el formulario de perfil */
+/* Inputs del formulario de perfil: ocupar todo el ancho de su celda */
+#perfil-form input[type="text"],
 #perfil-form input[type="number"],
 #perfil-form textarea {
-  width: 99%;
-  max-width: 99%;
-  min-width: 249px;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
   box-sizing: border-box;
   padding: 10px 14px;
   font-size: 1.08em;
@@ -2006,6 +2069,7 @@ form input[type="tel"] {
 }
 
 /* Recuadros y botones with clases únicas para inicio.html */
+/* Tarjetas de eventos - diseño limpio y simple */
 .inicio-card-evento {
   background: #fff;
   border-radius: 18px;
@@ -2013,10 +2077,44 @@ form input[type="tel"] {
   border: 1.5px solid #e0e0e0;
   max-width: 820px;
   width: 100%;
-  margin: 0.7em auto;
-  padding: 0.7em 1.2em;
-  gap: 0.15em;
-  }
+  margin: 1.2em auto;
+  padding: 1.5em 2em;
+  transition: all 0.2s ease;
+  position: relative;
+}
+
+.inicio-card-evento:first-child {
+  margin-top: 0.5em;
+}
+
+.inicio-card-evento:hover {
+  box-shadow: 0 4px 16px rgba(120,80,180,0.12);
+  border-color: #d1c4e9;
+  transform: translateY(-2px);
+}
+
+/* Eventos finalizados - estilo diferenciado */
+.historial-pasado {
+  opacity: 0.7;
+  background: linear-gradient(135deg, #f9f9f9 0%, #f5f5f5 100%) !important;
+  border-left: 4px solid #666;
+  position: relative;
+}
+
+.historial-pasado::before {
+  content: 'FINALIZADO';
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  background: #666;
+  color: white;
+  padding: 4px 12px;
+  border-radius: 6px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  z-index: 10;
+}
 
   /* Espacio extra entre el último input y el botón de crear evento */
   .crear-evento-box-nueva .crear-evento-input-nueva:last-of-type,
@@ -2104,8 +2202,16 @@ form input[type="tel"] {
   gap: 0.5em;
 }
 
+.evento-titulo-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  width: 100%;
+  gap: 0.5em;
+}
+
 .inicio-titulo-evento {
-  font-size: 1.35em;
+  font-size: 1.85em;
   font-weight: 700;
   color: var(--green-mid);
   margin-bottom: 0;
@@ -2119,6 +2225,37 @@ form input[type="tel"] {
   margin-bottom: 0.6em;
   margin-top: 0.1em;
   font-style: italic;
+}
+
+/* Link de grupo visible solo para participantes */
+.evento-link-grupo-row,
+.inicio-link-grupo-row,
+.favoritos-link-grupo-row {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4em;
+  margin: 0.5em 0;
+  padding: 0.8em 1em;
+  background: #f0f9f4;
+  border-left: 3px solid var(--green-mid);
+  border-radius: 8px;
+}
+
+.evento-link-grupo-row a,
+.inicio-link-grupo-row a,
+.favoritos-link-grupo-row a {
+  color: var(--violet);
+  text-decoration: none;
+  word-break: break-all;
+  font-weight: 600;
+  transition: color 0.2s;
+}
+
+.evento-link-grupo-row a:hover,
+.inicio-link-grupo-row a:hover,
+.favoritos-link-grupo-row a:hover {
+  color: #5b3a90;
+  text-decoration: underline;
 }
 
 .inicio-detalles-evento {
@@ -2306,7 +2443,7 @@ form input[type="tel"] {
 
 .btn-verificar {
   width: 100%;
-  max-width: 100%;
+  max-width:  100%;
   min-width: 220px;
   box-sizing: border-box;
   margin: 0.5em 0;
@@ -2417,7 +2554,6 @@ form input[type="tel"] {
   font-size: 1.08em;
   line-height: 1.15;
   padding-left: 0;
-  width: 100%;
 }
 
 #login-form input {
@@ -2435,10 +2571,6 @@ form input[type="tel"] {
   transition: border 0.2s;
   box-sizing: border-box;
   font-family: inherit;
-}
-
-#login-form input:focus {
-  outline: 2px solid var(--green-mid);
 }
 
 /* Nueva clase exclusiva para el recuadro de verificación de código */
@@ -2819,7 +2951,7 @@ form input[type="tel"] {
   margin-bottom: 0.5em;
   display: flex;
   flex-direction: column;
-  align-items: center;
+  align-items: stretch; /* que los campos ocupen todo el ancho */
   gap: 1em;
   width: 100%;
   box-sizing: border-box;
@@ -2843,21 +2975,32 @@ form input[type="tel"] {
 }
 
 .perfil-row-doble {
-  display: flex;
-  gap: 1.5em;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1.2em 1.5em; /* filas y columnas */
   width: 100%;
   box-sizing: border-box;
   justify-content: space-between;
 }
 
 .perfil-row-doble > div {
-  flex: 1;
   min-width: 0;
-  max-width: calc(50% - 0.75em);
   box-sizing: border-box;
   display: flex;
   flex-direction: column;
+  /* Override de estilos previos que limitaban el ancho a calc(50% - 0.75em) */
+  max-width: 100% !important;
+  width: 100%;
+  justify-self: stretch;
 }
+
+/* Alinear labels exactamente con el borde izquierdo del input */
+.perfil-form label { margin-left: 0; padding-left: 0; }
+
+/* Asegurar que inputs ocupen 100% dentro de su celda */
+.perfil-form input,
+.perfil-form select,
+.perfil-form textarea { width: 100%; }
 
 #perfil-descripcion-input {
   width: 100%;
@@ -2974,18 +3117,26 @@ form input[type="tel"] {
 }
 
 /* Mejora la estética y renombra la fila de edad y sexo */
+/* UNIFICADO CON .perfil-row-doble para que todos los inputs tengan el mismo tamaño */
 .perfil-fila-sexo-edad {
-  display: flex;
-  gap: 1em;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1.2em 1.5em;
   width: 100%;
   margin-bottom: 0.7em;
+  box-sizing: border-box;
 }
 
 .perfil-campo-sexo,
 .perfil-campo-edad {
-  flex: 1;
+  min-width: 0;
+  box-sizing: border-box;
   display: flex;
   flex-direction: column;
+  /* Override para que ocupen 100% de su celda grid */
+  max-width: 100% !important;
+  width: 100%;
+  justify-self: stretch;
 }
 
 .perfil-campo-sexo label,
@@ -3033,26 +3184,18 @@ form input[type="tel"] {
   margin-bottom: 0.2em;
 }
 
-/* Que el input de edad en el perfil editado sea más angosto */
+/* Edad: mismo ancho que el resto */
 .perfil-campo-edad input {
-  width: 80px; /* angosto y no sobresale del recuadro */
-  min-width: 60px;
-  max-width: 120px;
-  padding: 8px 12px;
-  border-radius: 10px;
-  border: 1.2px solid var(--gray);
-  background: #eaf2ff;
-  color: var(--green-dark);
-  font-size: 1em;
-  margin-bottom: 0.2em;
-  box-sizing: border-box;
-  display: block;
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
 }
 
 /* Reduce el interlineado y los espacios en el cuadro de edición de perfil */
 .perfil-form {
   gap: 0.4em;
   padding: 0.8em 0.8em 0.5em 0.8em;
+  display: none; /* Oculto por defecto, se muestra al hacer clic en los 3 puntitos */
 }
 
 .perfil-form-foto-centro {
@@ -3080,9 +3223,11 @@ form input[type="tel"] {
   box-sizing: border-box;
 }
 
-.perfil-form input:not(.perfil-row-doble input),
-.perfil-form textarea,
-.perfil-form select:not(.perfil-row-doble select) {
+/* Estilos unificados para todos los inputs del formulario de perfil */
+.perfil-form input[type="text"],
+.perfil-form input[type="number"],
+.perfil-form select,
+.perfil-form textarea {
   width: 100%;
   min-width: 0;
   max-width: 100%;
@@ -3097,24 +3242,11 @@ form input[type="tel"] {
   font-family: inherit;
 }
 
-#nombre,
-#apellido,
-#perfil-descripcion-input {
-  margin-bottom: 0.2em;
-  padding: 8px 12px;
-  font-size: 1em;
-}
+/* Eliminada duplicación: estilos unificados arriba */
 
 .perfil-fila-sexo-edad {
-  gap: 0.5em;
+  gap: 1.2em 1.5em; /* Igualado con .perfil-row-doble */
   margin-bottom: 0.2em;
-}
-
-.perfil-campo-sexo select,
-.perfil-campo-edad input {
-  margin-bottom: 0.1em;
-  padding: 8px 12px;
-  font-size: 1em;
 }
 
 /* NUEVAS CLASES EXCLUSIVAS PARA CREAR EVENTO */
@@ -3368,20 +3500,14 @@ label[for="ubicacion"].crear-evento-label-nueva {
 }
 
 /* Estilos para historial de eventos en perfil */
+/* Pestañas del historial - estilo original */
 .historial-tabs {
   display: flex;
   gap: 0;
-  margin-bottom: 15px;
+  margin-bottom: 0;
   border-bottom: 2px solid var(--gray);
   background: none;
   justify-content: flex-start;
-}
-
- .footer-tfi {
-  background: #f6faf7;
-  position: relative;
-  width: 100vw;
-  padding: 0.2em 0;
 }
 
 .historial-tab {
@@ -3414,168 +3540,16 @@ label[for="ubicacion"].crear-evento-label-nueva {
 #historial-content {
   min-height: 38px;
   background: #f7f8fc;
-  border-radius: 12px;
-  box-shadow: 0 2px 8px rgba(120,80,180,0.04);
-  padding: 1.5em 2em;
-  border: 1px solid #e0e0f0;
-}
-
-.historial-evento {
-  background: #f9f9f9;
-  border: 1px solid #ddd;
-  border-radius: 8px;
-  padding: 12px;
-  margin-bottom: 10px;
-  display: grid;
-  grid-template-columns: 1fr auto;
-  gap: 12px;
-}
-
-.historial-evento-header { display: block; margin-bottom: 8px; }
-.historial-evento-left { display: flex; flex-direction: column; gap: 6px; }
-.historial-evento-descripcion { margin: 0; color: #4a4a4a; font-size: 13px; }
-
-.historial-evento-right {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-end;
-  justify-content: space-between;
-  gap: 8px;
-}
-
-.historial-evento-titulo {
-  font-weight: bold;
-  color: var(--green-dark);
-  margin: 0;
-}
-
-.historial-evento-tipo {
-  font-size: 12px;
-  padding: 6px 14px;
-  border-radius: 18px;
-  color: white;
-  font-weight: bold;
-  text-transform: uppercase;
-}
-
-.historial-evento-tipo.creado {
-  background: var(--violet);
-  color: #fff;
-  height: var(--btn-height);
-  border-radius: var(--radius-md);
-  font-size: 1rem;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.2s ease;
-  padding: 0 var(--space-md);
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  text-decoration: none;
-  box-shadow: var(--shadow-sm);
-}
-.chip-actions {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-  align-items: center;
-}
-.chip-btn {
-  height: var(--btn-height);
-  border-radius: var(--radius-md);
-  font-size: 1rem;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.2s ease;
-  padding: 0 var(--space-md);
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  text-decoration: none;
-  box-shadow: var(--shadow-sm);
-}
-.chip-edit {
-  background: var(--green-mid);
-  color: #fff;
-}
-.chip-delete {
-  background: #c82333;
-  color: #fff;
-}
-.chip-delete:hover { background: #8b0e17; }
-.historial-evento-tipo.unido {
-  background-color: var(--green-mid);
-}
-.historial-evento-tipo.finalizado {
-  background-color: #666;
-}
-.historial-evento-detalles {
-  font-size: 13px;
-  color: #666;
-  display: flex;
-  gap: 15px;
-  flex-wrap: wrap;
-}
-.historial-evento-fecha {
-  font-size: 12px;
-  color: #888;
-  margin-top: 5px;
-}
-/* Responsive para historial */
-@media (max-width: 600px) {
-  .historial-tabs {
-    flex-wrap: wrap;
-    gap: 3px;
-  }
-  .historial-tab {
-    flex: 1;
-    min-width: 80px;
-    font-size: 12px;
-    padding: 6px 10px;
-  }
-  .historial-evento-detalles {
-    flex-direction: column;
-    gap: 6px;
-  }
-}
-
-/* Nuevas clases para el manejo de participantes */
-.participantes-toggle {
-  text-transform: uppercase;
-  cursor: pointer;
-  font-weight: 700;
-  font-size: 12px;
-  padding: 6px 14px;
-  border-radius: 16px;
-  border: none;
-  color: #fff;
-  background: var(--violet);
-  margin-top: 10px;
-  transition: background 0.18s, box-shadow 0.18s;
-}
-
-.participantes-lista {
-  margin-top: 10px;
-}
-
-.participante-item {
-  display: flex;
-  align-items: center;
-  gap: 18px;
-  padding: 10px 14px;
-  border-bottom: 1px solid #e0e0f0;
-  color: #333;
-  font-size: 13px;
-  box-shadow: 0 2px 8px rgba(120, 80, 180, 0.04);
-  border-radius: 10px;
+  border-radius: 0 0 12px 12px;
+  min-height: 38px;
   background: #f7f8fc;
+  border-radius: 0 0 12px 12px;
+  box-shadow: 0 2px 8px rgba(120,80,180,0.04);
+  padding: 0.8em 1em 1.5em 1em;
+  border: 1px solid #e0e0f0;
+  border-top: none;
 }
 
-.participante-item:last-child {
-  border-bottom: none;
-}
-
-/* Estilos para items de historial renderizados dinámicamente */
 .historial-item {
   background: #ffffff;
   border: 1px solid #e0e0e0;
@@ -3658,6 +3632,12 @@ label[for="ubicacion"].crear-evento-label-nueva {
   font-size: 12px;
 }
 
+.historial-evento-detalles {
+   flex-direction: column;
+  gap: 6px; 
+}
+
+/* Nuevas clases para el manejo de participantes */
 /* Estilos adicionales para participante */
 .participante-avatar {
   width: 44px;
@@ -3733,26 +3713,398 @@ label[for="ubicacion"].crear-evento-label-nueva {
 
 .historial-pasado::after {
   content: 'FINALIZADO';
-  position: relative;
-  z-index: 1;
-  width: 100vw;
-  max-width: 100vw;
-  min-height: 70vh;
-  background: transparent;
-  margin: 0;
-  padding: 0;
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  background: rgba(0, 0, 0, 0.6);
+  color: white;
+  padding: 4px 12px;
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+}
+
+.participante-info {
+  flex: 1;
   display: flex;
   flex-direction: column;
-  align-items: center;
-  flex: 1;
-  box-sizing: border-box;
-  overflow-x: hidden;
-  overflow-y: auto;
-  justify-content: flex-start;
-  gap: 0.5em;
   gap: 4px;
 }
 
+.participante-nombre {
+  font-weight: 700;
+  color: var(--green-dark);
+  font-size: 14px;
+}
+
+.participante-extra {
+  color: #888;
+  font-size: 12px;
+}
+
+/* Responsive para historial dinámico */
+@media (max-width: 600px) {
+  .historial-header {
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .historial-actions {
+    flex-direction: row;
+    width: 100%;
+  }
+
+  .historial-actions button {
+    flex: 1;
+    font-size: 11px;
+    padding: 6px 10px;
+  }
+
+  .historial-info h3 {
+    font-size: 16px;
+  }
+
+  .participante-avatar {
+    width: 36px;
+    height: 36px;
+  }
+}
+
+/* Nuevas clases para el manejo de participantes */
+.participantes-lista {
+  margin-top: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 10px 12px;
+  background: #f6f4ff; /* panel suave lila/gris */
+  border: 1px solid #e7e3fb;
+  border-radius: 12px;
+}
+
+.participante-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 12px;
+  background: #fff;
+  border: 1px solid #eaeaea;
+  border-radius: 12px;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.04);
+}
+
+.participante-foto {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 1px solid #ddd;
+}
+
+.participante-info { display: flex; flex-direction: column; }
+.participante-nombre { font-weight: 700; color: var(--green-dark); font-size: 14px; }
+.participante-extra { color: #777; font-size: 12px; }
+
+/* Botón Ver/Ocultar participantes con estética lila delineada */
+.participantes-section .btn-secondary {
+  background: transparent;
+  color: var(--violet);
+  border: 2px solid var(--violet);
+  border-radius: 12px;
+}
+.participantes-section .btn-secondary:hover {
+  background: #ede7f6;
+  box-shadow: 0 2px 8px rgba(120,80,180,0.12);
+}
+.participantes-toggle {
+  text-transform: none;
+  cursor: pointer;
+  font-weight: 600;
+  font-size: 13px;
+  padding: 8px 16px;
+  border-radius: 8px;
+  border: 2px solid var(--violet);
+  color: var(--violet);
+  background: transparent;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+}
+
+.participantes-toggle:hover {
+  background: var(--violet);
+  color: white;
+  box-shadow: 0 2px 8px rgba(120, 80, 180, 0.3);
+}
+
+.participantes-lista {
+  margin-top: 10px;
+}
+
+.participante-item {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  padding: 10px 14px;
+  border-bottom: 1px solid #e0e0f0;
+  color: #333;
+  font-size: 13px;
+  box-shadow: 0 2px 8px rgba(120, 80, 180, 0.04);
+  border-radius: 10px;
+  background: #f7f8fc;
+}
+
+.participante-item:last-child {
+  border-bottom: none;
+}
+
+
+
+/* Contenedor de botones verticales (editar/borrar) alineados a la derecha */
+.historial-botones-verticales {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  align-items: stretch;
+}
+
+.historial-botones-horizontales {
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+}
+
+/* Botones específicos del historial */
+.btn-editar-evento {
+  background: var(--green-dark);
+  color: white;
+  padding: 8px 16px;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  border: none;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+}
+
+.btn-editar-evento:hover {
+  background: #002412;
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(0, 57, 24, 0.3);
+}
+
+.btn-borrar-evento {
+  background: #c82333;
+  color: white;
+  padding: 8px 16px;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  border: none;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+}
+
+.btn-borrar-evento:hover {
+  background: #a71d2a;
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(200, 35, 51, 0.3);
+}
+
+.btn-no-participar {
+  background: #ffc107;
+  color: #333;
+  font-weight: 700;
+  padding: 8px 16px;
+  border-radius: 8px;
+  font-size: 13px;
+  cursor: pointer;
+  border: none;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+}
+
+.btn-no-participar:hover {
+  background: #e0a800;
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(255, 193, 7, 0.3);
+}
+
+/* Lista de participantes */
+/* Lista de participantes - diseño minimalista */
+.participantes-lista {
+  margin-top: 14px;
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  background: transparent;
+}
+
+/* Card de cada participante - simple con líneas divisorias */
+.participante-card {
+  background: transparent;
+  padding: 14px 8px;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  border-bottom: 1px solid #e8e8e8;
+  width: 100%;
+  transition: background 0.2s ease;
+}
+
+.participante-card:hover {
+  background: #fafafa;
+}
+
+.participante-card:last-child {
+  border-bottom: none;
+}
+
+.participante-avatar {
+  width: 50px;
+  height: 50px;
+  border-radius: 50%;
+  overflow: hidden;
+  flex-shrink: 0;
+  border: 2px solid #d0d0d0;
+  background: #f9f9f9;
+}
+
+.participante-foto {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center center;
+  display: block;
+}
+
+.participante-info {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.participante-nombre {
+  font-weight: 600;
+  color: var(--green-dark);
+  font-size: 14px;
+  margin: 0;
+  min-width: 150px;
+}
+
+.participante-detalles {
+  display: flex;
+  gap: 12px;
+  font-size: 13px;
+  color: #666;
+  flex-wrap: wrap;
+}
+
+.participante-detalles span {
+  color: #666;
+  font-weight: 400;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .participante-info {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 4px;
+  }
+  
+  .participante-nombre {
+    min-width: auto;
+  }
+  
+  .participante-avatar {
+    width: 44px;
+    height: 44px;
+  }
+  
+  .participante-detalles {
+    font-size: 12px;
+    gap: 8px;
+  }
+  
+  .historial-botones-verticales {
+    width: 100%;
+  }
+}
+
+/* Estilos adicionales para participante */
+.participante-avatar {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  overflow: hidden;
+  flex-shrink: 0;
+  border: 2px solid #e0e0e0;
+}
+
+.participante-foto {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+/* ========================================
+   SISTEMA DE VALORACIÓN CON ESTRELLAS
+   ======================================== */
+.historial-valoracion {
+  margin-top: 12px;
+  padding: 12px;
+  background: #f9f9f9;
+  border-radius: 8px;
+  border: 1px solid #e8e8e8;
+}
+
+.estrellas-container {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  justify-content: flex-start;
+  margin: 8px 0;
+}
+
+.estrella {
+  font-size: 32px;
+  color: #ddd;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  user-select: none;
+}
+
+.estrella:hover {
+  transform: scale(1.2);
+}
+
+.estrella.seleccionada {
+  color: #FFD700;
+}
+
+.btn-enviar-valoracion {
+  padding: 8px 20px;
+  background: var(--violet);
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.btn-enviar-valoracion:hover {
+  background: var(--violet-dark);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(120, 80, 180, 0.3);
+}
+
+/* Estilos de participantes */
 .participante-nombre {
   font-weight: 700;
   color: var(--green-dark);
@@ -3841,20 +4193,27 @@ label[for="ubicacion"].crear-evento-label-nueva {
    ============================================ */
 
 .favoritos-card-evento {
-  background: #f7fbf9;
-  border-radius: 10px;
-  box-shadow: 0 2px 8px rgba(120,80,180,0.05);
-  border: 1.2px solid #e0e0e0;
-  padding: 0.7em 1em;
-  margin-bottom: 0.4em;
+  background: #fff;
+  border-radius: 18px;
+  box-shadow: 0 2px 12px rgba(120,80,180,0.06);
+  border: 1.5px solid #e0e0e0;
+  padding: 1.5em 2em;
+  margin-bottom: 1.2em;
   display: flex;
   flex-direction: column;
-  gap: 0.2em;
+  gap: 0.3em;
   align-items: flex-start;
   position: relative;
-  max-width: 99%;
-  width: 99%;
+  max-width: 820px;
+  width: 100%;
   margin: 0 auto 1.2em auto;
+  transition: all 0.2s ease;
+}
+
+.favoritos-card-evento:hover {
+  box-shadow: 0 4px 16px rgba(120,80,180,0.12);
+  border-color: #d1c4e9;
+  transform: translateY(-2px);
 }
 
 .favoritos-titulo-row {
@@ -3866,7 +4225,7 @@ label[for="ubicacion"].crear-evento-label-nueva {
 }
 
 .favoritos-titulo-evento {
-  font-size: 1.35em;
+  font-size: 1.85em;
   font-weight: 700;
   color: var(--green-mid);
   margin-bottom: 0;
@@ -4010,4 +4369,255 @@ label[for="ubicacion"].crear-evento-label-nueva {
   .favoritos-actions {
     justify-content: center;
   }
+}
+/* ============================================
+   MODAL DE CONFIRMACI�N DE BORRADO - MEJORADO
+   ============================================ */
+.modal-confirmar-borrado .modal-borrar-content {
+  max-width: 480px;
+  text-align: center;
+  padding: 32px 28px 28px;
+  border-radius: 20px;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+  animation: modalSlideIn 0.3s ease-out;
+}
+
+@keyframes modalSlideIn {
+  from {
+    opacity: 0;
+    transform: translateY(-20px) scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.modal-borrar-icono {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 80px;
+  height: 80px;
+  background: linear-gradient(135deg, #ffe8e8 0%, #ffdddd 100%);
+  border-radius: 50%;
+  margin: 0 auto 20px;
+  animation: iconoPulse 2s ease-in-out infinite;
+}
+
+@keyframes iconoPulse {
+  0%, 100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.05);
+  }
+}
+
+.modal-borrar-icono svg {
+  width: 64px;
+  height: 64px;
+}
+
+.modal-borrar-titulo {
+  font-size: 24px;
+  font-weight: 700;
+  color: #2c3e50;
+  margin: 0 0 12px 0;
+  text-align: center;
+}
+
+.modal-borrar-texto {
+  font-size: 16px;
+  color: #6c757d;
+  line-height: 1.6;
+  margin: 0 0 28px 0;
+  text-align: center;
+}
+
+.modal-borrar-actions {
+  display: flex;
+  gap: 12px;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
+.btn-cancelar-borrado,
+.btn-confirmar-borrado {
+  padding: 14px 32px;
+  font-size: 15px;
+  font-weight: 600;
+  border-radius: 12px;
+  border: none;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  min-width: 160px;
+}
+
+.btn-cancelar-borrado {
+  background: linear-gradient(135deg, #e9ecef 0%, #dee2e6 100%);
+  color: #495057;
+}
+
+.btn-cancelar-borrado:hover {
+  background: linear-gradient(135deg, #dee2e6 0%, #ced4da 100%);
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.15);
+}
+
+.btn-confirmar-borrado {
+  background: linear-gradient(135deg, #dc3545 0%, #c82333 100%);
+  color: white;
+}
+
+.btn-confirmar-borrado:hover {
+  background: linear-gradient(135deg, #c82333 0%, #a71d2a 100%);
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(220, 53, 69, 0.4);
+}
+
+.btn-confirmar-borrado:active {
+  transform: translateY(0);
+  box-shadow: 0 2px 8px rgba(220, 53, 69, 0.3);
+}
+
+@media (max-width: 500px) {
+  .modal-borrar-actions {
+    flex-direction: column;
+  }
+  
+  .btn-cancelar-borrado,
+  .btn-confirmar-borrado {
+    width: 100%;
+    min-width: unset;
+  }
+}
+
+/* Modal edición */
+
+/* Modal: labels fecha/hora */
+#modal-editar-evento .perfil-fila-sexo-edad label {
+  background: transparent !important;
+  box-shadow: none !important;
+  padding: 0 0 4px 0 !important;
+  color: #333 !important;
+  font-weight: 500 !important;
+}
+
+/* Modal: inputs fecha/hora */
+#modal-editar-evento input[type="date"],
+#modal-editar-evento input[type="time"] {
+  background: #ffffff !important;
+  border: 1px solid #d1d1e0 !important;
+  color: #333 !important;
+}
+
+#modal-editar-evento input[type="date"]:focus,
+#modal-editar-evento input[type="time"]:focus {
+  background: #ffffff !important;
+  border-color: var(--violet) !important;
+  box-shadow: 0 0 0 2px rgba(120, 80, 180, 0.15) !important;
+}
+
+/* Modal: título */
+#modal-editar-evento h3 {
+  text-align: center !important;
+  margin-bottom: var(--space-md) !important;
+}
+
+/* Modal: botones */
+#modal-editar-evento .btn-secondary {
+  background: linear-gradient(135deg, #dc3545 0%, #c82333 100%) !important;
+  color: white !important;
+  border: none !important;
+  padding: 10px 20px !important;
+  font-weight: 600 !important;
+  font-size: 14px !important;
+  border-radius: 8px !important;
+  box-shadow: 0 3px 10px rgba(220, 53, 69, 0.25) !important;
+  transition: all 0.3s ease !important;
+}
+
+#modal-editar-evento .btn-secondary:hover {
+  background: linear-gradient(135deg, #c82333 0%, #a71d2a 100%) !important;
+  transform: translateY(-2px) !important;
+  box-shadow: 0 5px 14px rgba(220, 53, 69, 0.35) !important;
+}
+
+#modal-editar-evento .btn-primary {
+  background: linear-gradient(135deg, #28a745 0%, #218838 100%) !important;
+  color: white !important;
+  border: none !important;
+  padding: 10px 20px !important;
+  font-weight: 600 !important;
+  font-size: 14px !important;
+  border-radius: 8px !important;
+  box-shadow: 0 3px 10px rgba(40, 167, 69, 0.25) !important;
+  transition: all 0.3s ease !important;
+}
+
+#modal-editar-evento .btn-primary:hover {
+  background: linear-gradient(135deg, #218838 0%, #1e7e34 100%) !important;
+  transform: translateY(-2px) !important;
+  box-shadow: 0 5px 14px rgba(40, 167, 69, 0.35) !important;
+}
+
+#modal-editar-evento .btn-primary:active,
+#modal-editar-evento .btn-secondary:active {
+  transform: translateY(0) !important;
+}
+
+/* Auth: ocultar body hasta validar sesión */
+body[data-protected="true"] {
+  display: none !important;
+}
+
+/* Utilidades para reemplazar estilos inline del JS */
+.centrado { text-align: center; }
+.texto-violeta { color: var(--violet); }
+.texto-verde { color: var(--green-dark); }
+.texto-bold { font-weight: bold; }
+.texto-italic { font-style: italic; }
+.texto-grande { font-size: 1.4em; }
+.texto-mediano { font-size: 1.08em; }
+.texto-pequeno { font-size: 1.05em; }
+.favoritos-vacio, .sin-resultados-busqueda {
+  background: #f7fbf9;
+  border-radius: 10px;
+  margin: 2em auto;
+  max-width: 600px;
+  border: 1.5px solid #e0e0e0;
+  padding: 3em 2em;
+}
+.favoritos-link-grupo-row {
+  margin: 6px 0 2px 0;
+  display: block;
+}
+.favoritos-link-grupo-row .texto-violeta {
+  word-break: break-all;
+  text-decoration: none;
+}
+.favoritos-titulo-grande {
+  color: #003918;
+  margin-bottom: 0.5em;
+  font-size: 1.4em;
+}
+.favoritos-descripcion-verde {
+  color: #2d5f3f;
+  margin-bottom: 1.5em;
+  font-size: 1.05em;
+}
+.btn-crear-evento-vacio {
+  display: inline-block;
+  background: #003918;
+  color: #fff;
+  padding: 0.7em 1.8em;
+  border-radius: 8px;
+  text-decoration: none;
+  font-weight: bold;
+  transition: background 0.2s;
+}
+.btn-crear-evento-vacio:hover {
+  background: var(--green-mid);
 }
