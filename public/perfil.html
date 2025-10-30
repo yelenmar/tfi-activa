@@ -24,7 +24,7 @@
       <a href="perfil.html" class="active">Perfil</a>
     </div>
     <div class="nav-right">
-  <a href="#" class="nav-logout-btn" id="nav-cerrar-sesion">Cerrar Sesión</a>
+      <a href="#" class="nav-logout-btn hidden" id="nav-cerrar-sesion">Cerrar Sesión</a>
       <button class="nav-menu-btn-inline" aria-label="Menú opciones">&#8942;</button>
     </div>
   </nav>
@@ -43,17 +43,17 @@
             <span id="perfil-sexo"></span>
             <span id="perfil-edad"></span>
           </div>
-          <p id="perfil-descripcion" class="perfil-descripcion"></p>
+          <p id="perfil-descripcion" class="perfil-descripcion hidden"></p>
         </div>
       </div>
-  <form id="perfil-form" class="perfil-form" autocomplete="off">
+  <form id="perfil-form" class="perfil-form hidden" autocomplete="off">
         <div class="perfil-form-foto-centro">
           <img id="perfil-foto-form" src="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><circle cx='50' cy='50' r='48' fill='%23e6e6e6'/><circle cx='50' cy='38' r='18' fill='%23bdbdbd'/><path d='M20 80c6-14 24-18 30-18s24 4 30 18' fill='%23bdbdbd'/></svg>" alt="Foto de perfil">
-          <div style="display:flex; gap:8px; flex-wrap:wrap; justify-content:center;">
+          <div class="perfil-botones-foto">
             <button type="button" id="btn-cambiar-foto" class="btn-base btn-secondary">Cambiar foto</button>
             <button type="button" id="btn-quitar-foto" class="btn-base btn-secondary">Quitar foto</button>
           </div>
-          <input type="file" id="foto-perfil" accept="image/*" hidden>
+          <input type="file" id="foto-perfil" accept="image/*" class="hidden">
         </div>
 
         <div class="perfil-row-doble">
@@ -83,7 +83,10 @@
         </div>
   <label for="perfil-descripcion-input">Descripción</label>
   <textarea id="perfil-descripcion-input" name="perfil-descripcion" rows="2" placeholder="Contanos algo sobre vos..."></textarea>
-        <button type="submit" class="btn-base btn-primary">Guardar perfil</button>
+        <div class="perfil-form-actions">
+          <button type="button" id="btn-cancelar-perfil" class="btn-base btn-secondary">Cancelar</button>
+          <button type="submit" class="btn-base btn-primary">Guardar perfil</button>
+        </div>
       </form>
       <h3 class="perfil-eventos-titulo">Historial de Eventos</h3>
       <section id="eventos-historial">
@@ -94,12 +97,12 @@
           <button class="historial-tab btn-base btn-secondary" data-tipo="finalizado">Finalizados</button>
         </div>
         <div id="historial-content">
-          <p style="color:#888;">Cargando historial...</p>
+          <p class="historial-cargando">Cargando historial...</p>
         </div>
       </section>
 
       <!-- Modal edición de evento -->
-  <div id="modal-editar-evento" class="modal">
+      <div id="modal-editar-evento" class="modal hidden">
         <div class="modal-content">
           <h3>Editar evento</h3>
           <form id="form-editar-evento" autocomplete="off">
@@ -133,7 +136,7 @@
       </div>
 
       <!-- Modal confirmación de borrado -->
-  <div id="modal-confirmar-borrado" class="modal modal-confirmar-borrado">
+      <div id="modal-confirmar-borrado" class="modal modal-confirmar-borrado hidden">
         <div class="modal-content modal-borrar-content">
           <div class="modal-borrar-icono">
             <svg width="64" height="64" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">

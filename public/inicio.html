@@ -9,7 +9,7 @@
   <meta name="firebase-config" content='{"apiKey":"AIzaSyAgufVX3sdXEzTJQC6ZTqv6Clh0Coo4A40","authDomain":"tfi-activa.firebaseapp.com","projectId":"tfi-activa","storageBucket":"tfi-activa.firebasestorage.app","messagingSenderId":"459768332837","appId":"1:459768332837:web:e28594decec0743631b5cc","measurementId":"G-5944BHTK50"}'>
 </head>
 <body data-protected="true">
-  <header class="header-principal">
+  <header class="header-principal header-relative">
     <div class="header-content">
       <a href="inicio.html">
         <img src="img/LOGO-removebg-preview.png" alt="Logo principal Activá" class="header-logo-centro">
@@ -24,7 +24,7 @@
       <a href="perfil.html">Perfil</a>
     </div>
     <div class="nav-right">
-      <a href="#" class="nav-logout-btn" id="nav-cerrar-sesion" style="display: none;">Cerrar Sesión</a>
+      <a href="#" class="nav-logout-btn hidden" id="nav-cerrar-sesion">Cerrar Sesión</a>
       <button class="nav-menu-btn-inline" aria-label="Menú opciones">&#8942;</button>
     </div>
   </nav>
@@ -46,7 +46,7 @@
         <div id="eventos-loading">
           <p>Cargando eventos...</p>
         </div>
-  <div id="eventos-vacio">
+        <div id="eventos-vacio" class="hidden">
           <p>No hay eventos disponibles en este momento.</p>
           <p><a href="crear-evento.html">¡Crea el primer evento!</a></p>
         </div>
