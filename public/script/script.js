@@ -98,6 +98,50 @@ const setLocalFavoritosSet = (userId, setVals) => {
 };
 
 // ==============================
+// Funciones centralizadas de fecha/hora (formato argentino)
+// ==============================
+const pad2 = (n) => String(n).padStart(2, '0');
+
+// Formatear fecha ISO (YYYY-MM-DD) a formato argentino (DD/MM/YYYY)
+const formatearFechaArgentina = (fechaStr) => {
+  if (!fechaStr) return '';
+  // Si es formato ISO YYYY-MM-DD, parsear directamente sin zona horaria
+  const match = fechaStr.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (match) {
+    const [_, year, month, day] = match;
+    return `${day}/${month}/${year}`;
+  }
+  // Fallback: intentar parsear como fecha
+  try {
+    const fecha = new Date(fechaStr);
+    if (!isNaN(fecha.getTime())) {
+      return `${pad2(fecha.getDate())}/${pad2(fecha.getMonth() + 1)}/${fecha.getFullYear()}`;
+    }
+  } catch (e) {}
+  return fechaStr; // Devolver original si no se puede parsear
+};
+
+// Formatear hora en formato 24hs argentino (HH:mm)
+const formatearHoraArgentina = (horaStr) => {
+  if (!horaStr) return '';
+  const match = horaStr.match(/^(\d{1,2}):(\d{2})/);
+  if (match) {
+    return `${pad2(match[1])}:${pad2(match[2])}`;
+  }
+  return horaStr;
+};
+
+// Crear objeto Date local sin problemas de zona horaria (para comparaciones)
+const crearFechaLocal = (fechaISO, horaStr) => {
+  if (!fechaISO || !horaStr) return null;
+  const [year, month, day] = fechaISO.split('-').map(Number);
+  const [hours, minutes] = horaStr.split(':').map(Number);
+  if (!year || !month || !day || hours === undefined || minutes === undefined) return null;
+  // Crear fecha local sin conversión de zona horaria
+  return new Date(year, month - 1, day, hours, minutes);
+};
+
+// ==============================
 // Helpers DOM
 // ==============================
 const $ = (selector) => document.querySelector(selector);
@@ -963,11 +1007,11 @@ document.addEventListener("DOMContentLoaded", () => {
           return;
         }
       
-        // Validar que la fecha no sea en el pasado
-  const fechaHoraEvento = new Date(`${fechaEvento}T${horaEvento}`);
+        // Validar que la fecha no sea en el pasado (usar fecha local sin conversión UTC)
+        const fechaHoraEvento = crearFechaLocal(fechaEvento, horaEvento);
         const ahora = new Date();
       
-        if (fechaHoraEvento <= ahora) {
+        if (!fechaHoraEvento || fechaHoraEvento <= ahora) {
           mostrarMensajeError('La fecha y hora del evento debe ser futura');
           return;
         }
@@ -1083,18 +1127,7 @@ document.addEventListener("DOMContentLoaded", () => {
       if (!misFavoritos.length) {
         favoritosLista.innerHTML = "<p style='text-align:center;'>No tienes eventos favoritos aún.</p>";
       } else {
-        // Funciones helper para formatear fecha y hora
-        const formatearFecha = (fechaStr) => {
-          const fecha = new Date(fechaStr);
-          const opciones = { day: '2-digit', month: '2-digit', year: 'numeric' };
-          return fecha.toLocaleDateString('es-ES', opciones);
-        };
-      
-        const formatearHora = (horaStr) => {
-          const [horas, minutos] = horaStr.split(':');
-          return `${horas}:${minutos}`;
-        };
-        
+        // Funciones helper para formatear fecha y hora usando funciones centralizadas
         favoritosLista.innerHTML = '';
         const ahora = new Date();
         
@@ -1131,10 +1164,9 @@ document.addEventListener("DOMContentLoaded", () => {
           const isOrganizadorFav = userId && evento.organizadorId && evento.organizadorId === userId;
           const yaParticipa = Array.isArray(evento.participantes) && evento.participantes.includes(userId);
 
-          // Formatear fecha y hora
-          const pad2 = (n) => String(n).padStart(2, '0');
-          const fechaFormateada = formatearFecha(evento.fecha || (construirFechaHora(evento) ? `${construirFechaHora(evento).getFullYear()}-${pad2(construirFechaHora(evento).getMonth()+1)}-${pad2(construirFechaHora(evento).getDate())}` : ''));
-          const horaFormateada = formatearHora(evento.hora || '');
+          // Formatear fecha y hora con funciones centralizadas
+          const fechaFormateada = formatearFechaArgentina(evento.fecha);
+          const horaFormateada = formatearHoraArgentina(evento.hora);
 
           const card = document.createElement('div');
           card.className = 'favoritos-card-evento';
@@ -1341,7 +1373,7 @@ document.addEventListener("DOMContentLoaded", () => {
   };
 
   const construirFechaHora = (evento) => {
-    // Priorizar ISO almacenado
+    // Priorizar ISO almacenado (pero parsearlo como local, no UTC)
     if (evento && evento.fechaHoraEvento) {
       const d = new Date(evento.fechaHoraEvento);
       if (!isNaN(d.getTime())) return d;
@@ -1349,8 +1381,8 @@ document.addEventListener("DOMContentLoaded", () => {
     const f = normalizarFecha(evento?.fecha);
     const h = normalizarHora(evento?.hora);
     if (!f || !h) return null;
-    const d = new Date(`${f}T${h}`);
-    return isNaN(d.getTime()) ? null : d;
+    // Usar crearFechaLocal para evitar problemas de zona horaria
+    return crearFechaLocal(f, h);
   };
 
   // Normalización de eventos (fechas inválidas)
@@ -1557,9 +1589,10 @@ document.addEventListener("DOMContentLoaded", () => {
             botonTexto = 'Participando';
             botonDisabled = true;
           }
-          const fechaFormateada = formatearFecha(evento.fecha || (construirFechaHora(evento) ? `${construirFechaHora(evento).getFullYear()}-${pad2(construirFechaHora(evento).getMonth()+1)}-${pad2(construirFechaHora(evento).getDate())}` : ''));
-          const dEvt = construirFechaHora(evento);
-          const horaFormateada = formatearHora(evento.hora || (dEvt ? `${pad2(dEvt.getHours())}:${pad2(dEvt.getMinutes())}` : ''));
+          
+          // Formatear con funciones centralizadas
+          const fechaFormateada = formatearFechaArgentina(evento.fecha);
+          const horaFormateada = formatearHoraArgentina(evento.hora);
           
           // Link de grupo: solo visible si el usuario YA está participando (o es el organizador)
           const linkGrupoRow = (evento.linkGrupo && String(evento.linkGrupo).trim() && (yaParticipa || isOrganizador))
@@ -1668,17 +1701,8 @@ document.addEventListener("DOMContentLoaded", () => {
       }
     };
   
-    // Funciones helper para formatear fecha y hora
-    const formatearFecha = (fechaStr) => {
-      const fecha = new Date(fechaStr);
-      const opciones = { day: '2-digit', month: '2-digit', year: 'numeric' };
-      return fecha.toLocaleDateString('es-ES', opciones);
-    };
-  
-    const formatearHora = (horaStr) => {
-      const [horas, minutos] = horaStr.split(':');
-      return `${horas}:${minutos}`;
-  };
+    // Reutilizar funciones centralizadas (ya definidas arriba)
+    // const formatearFechaArgentina y formatearHoraArgentina están globales
   
     // Sistema de limpieza automática de eventos
     const limpiarEventosExpirados = async () => {
@@ -2402,21 +2426,9 @@ document.addEventListener("DOMContentLoaded", () => {
     const fechaEvento = construirFechaHora(item);
     const esFuturo = fechaEvento && fechaEvento > new Date();
     
-    // Formatear fecha y hora igual que en inicio
-    const formatearFecha = (fechaStr) => {
-      const fecha = new Date(fechaStr);
-      const opciones = { day: '2-digit', month: '2-digit', year: 'numeric' };
-      return fecha.toLocaleDateString('es-ES', opciones);
-    };
-  
-    const formatearHora = (horaStr) => {
-      const [horas, minutos] = horaStr.split(':');
-      return `${horas}:${minutos}`;
-    };
-    
-    const pad2 = (n) => String(n).padStart(2, '0');
-    const fechaFormateada = item.fecha ? formatearFecha(item.fecha || (construirFechaHora(item) ? `${construirFechaHora(item).getFullYear()}-${pad2(construirFechaHora(item).getMonth()+1)}-${pad2(construirFechaHora(item).getDate())}` : '')) : '';
-    const horaFormateada = item.hora ? formatearHora(item.hora) : '';
+    // Usar funciones centralizadas para formatear (ya definidas globalmente)
+    const fechaFormateada = formatearFechaArgentina(item.fecha);
+    const horaFormateada = formatearHoraArgentina(item.hora);
     
     // Calcular disponibles
     const unidos = Number(item.unidos || 0);
@@ -3061,8 +3073,9 @@ document.addEventListener("DOMContentLoaded", () => {
               mostrarMensajeError('Fecha u hora inválida. Usa formato DD/MM/AAAA y HH:mm');
               return;
             }
-            const fh = new Date(`${fechaEdit}T${horaEdit}`);
-            if (isNaN(fh.getTime())) {
+            // Usar crearFechaLocal para evitar problemas de zona horaria
+            const fh = crearFechaLocal(fechaEdit, horaEdit);
+            if (!fh || isNaN(fh.getTime())) {
               mostrarMensajeError('Fecha/hora no válida');
               return;
             }
