@@ -611,35 +611,31 @@ form select {
 }
 
 /* Botón secundario (cancelar, volver) */
-.btn-secondary {
-  background: var(--gray-light);
-  color: var(--green-dark);
-  border: 1px solid var(--gray-medium);
+.btn-unirme {
+  display: inline-flex; /* igual a los botones de eventos */
+  align-items: center;
+  justify-content: center;
+  height: var(--btn-height);
+  padding: 0 var(--space-lg);
+  border-radius: var(--radius-md);
+  font-size: var(--btn-font);
+  font-weight: 700;
+  background: var(--violet); /* color lila actual */
+  color: #fff;
+  border: none;
+  cursor: pointer;
+  text-decoration: none;
+  box-shadow: var(--shadow-sm);
+  transition: background 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease;
 }
-.btn-secondary:hover {
-  background: var(--gray-medium);
+.btn-unirme:hover {
+  background: #9b59d0; /* lila un poco más claro al hover */
   box-shadow: var(--shadow-md);
+  transform: translateY(-1px);
 }
-
-/* Botones de foto en perfil: lila con hover lila más claro */
-.perfil-form-foto-centro .btn-secondary {
-  background: #fff;
-  color: var(--violet);
-  border: 2px solid var(--violet);
-  font-weight: 600;
-}
-.perfil-form-foto-centro .btn-secondary:hover {
-  background: #f5f0ff; /* lila muy claro de fondo */
-  border-color: var(--violet);
-  box-shadow: var(--shadow-md);
-}
-
-/* Botones del formulario de perfil (Cancelar/Guardar): mismo estilo que foto */
-.perfil-form-actions .btn-secondary {
-  background: #fff;
-  color: var(--violet);
-  border: 2px solid var(--violet);
-  font-weight: 600;
+.btn-unirme:focus {
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(141, 84, 199, 0.2), var(--shadow-sm);
 }
 .perfil-form-actions .btn-secondary:hover {
   background: #f5f0ff;
@@ -833,42 +829,58 @@ body {
   z-index: 1;
   width: 100vw;
   max-width: 100vw;
-  min-height: calc(100vh - 300px); /* Ajustar según altura de header + nav + footer */
+  min-height: calc(100vh - 300px);
   background: transparent;
   margin: 0;
-  padding: 0 0 3.5em 0; /* Mover el margin-bottom a padding-bottom para que el fondo lo cubra */
+  padding: 10px 0;
   display: flex;
   flex-direction: column;
   align-items: center;
+  justify-content: flex-start;
   flex: 1;
   box-sizing: border-box;
   overflow-x: hidden;
-  overflow-y: auto;
-  justify-content: flex-start;
+  overflow-y: hidden;
 }
 
 .subtitulo {
   color: var(--green-dark);
-  font-size: 1.08rem;
-  line-height: 1.15;
-  margin: 0.2em 0;
+  font-size: 1rem;
+  font-weight: 500;
+  line-height: 1.4;
+  margin: 0 auto 10px auto;
   text-align: center;
+  position: relative;
+  z-index: 2;
+  max-width: 90%;
+  padding: 0 15px;
+  text-shadow: 0 2px 4px rgba(255, 255, 255, 0.8);
 }
 
 .carrusel-full {
-  margin-top: 10px;
+  margin-top: 0;
+  margin-bottom: 10px;
   position: relative;
-  width: 100vw;
-  max-width: 100vw;
-  margin: 20 auto;
-  height: 400px;
+  width: 95%;
+  max-width: 1200px;
+  background: linear-gradient(145deg, rgba(255, 255, 255, 0.98) 0%, rgba(250, 248, 255, 0.95) 100%);
+  backdrop-filter: blur(15px);
+  border-radius: 12px;
+  padding: 12px;
+  box-shadow: 
+    0 15px 50px rgba(0, 0, 0, 0.12),
+    0 5px 15px rgba(141, 84, 199, 0.08);
+  z-index: 2;
+  border: 1px solid rgba(255, 255, 255, 0.5);
 }
 
 .carrusel-imagenes {
   width: 100%;
-  height: 100%;
+  height: 380px;
   position: relative;
   overflow: hidden;
+  border-radius: 8px;
+  box-shadow: 0 5px 20px rgba(0, 0, 0, 0.2);
 }
 
 .carrusel-imagenes .img-actividad {
@@ -879,11 +891,14 @@ body {
   top: 0;
   left: 0;
   opacity: 0;
-  transition: opacity 0.5s ease-in-out;
+  transition: opacity 0.6s ease-in-out;
+  border-radius: 8px;
 }
 
 .carrusel-imagenes .img-actividad.active {
   opacity: 1;
+  transform: scale(1.02);
+  transition: opacity 0.6s ease-in-out, transform 0.6s ease-in-out;
 }
 
 .carrusel-btn {
@@ -916,51 +931,130 @@ body {
 #carrusel-next { right: 10px; }
 
 #carrusel-dots {
-  position: absolute;
-  bottom: 8px;
-  left: 50%;
-  transform: translateX(-50%);
+  position: relative;
+  bottom: 0;
+  left: 0;
+  transform: none;
   display: flex;
-  gap: 8px;
+  gap: 5px; /* separación más compacta */
   z-index: 2;
+  justify-content: center;
+  margin-top: 12px;
 }
 
 .carrusel-dot {
-  width: 8px;
-  height: 8px;
+  width: 2px;  /* ultra mini */
+  height: 2px;
   border-radius: 50%;
-  background: rgba(0,0,0,0.25);
-  border: 1px solid rgba(255,255,255,0.6);
-  opacity: 0.7;
+  background: rgba(141, 84, 199, 0.25);
+  border: none;
+  box-shadow: 0 0 0 1px rgba(141, 84, 199, 0.4);
   cursor: pointer;
-  transition: opacity 0.2s, transform 0.2s;
+  opacity: 0.95;
+  transition: background 0.2s ease, opacity 0.2s ease, box-shadow 0.2s ease;
+}
+
+.carrusel-dot:hover {
+  background: rgba(141, 84, 199, 0.35);
+  opacity: 1;
+  box-shadow: 0 0 0 2px rgba(141, 84, 199, 0.18);
 }
 
 .carrusel-dot.active {
   background: var(--violet);
   opacity: 1;
-  transform: scale(1.1);
+  box-shadow: 0 0 0 2px rgba(141, 84, 199, 0.2);
 }
 
 .btn-unirme {
-  display: inline-block;
-  background: var(--green-mid);
-  color: var(--white-soft);
-  font-weight: 600;
-  font-size: 1.1rem;
-  padding: 10px 28px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: var(--btn-height);
+  padding: 0 var(--space-lg);
+  border-radius: var(--radius-md);
+  font-size: var(--btn-font);
+  font-weight: 700;
+  background: var(--violet);
+  color: #fff;
   border: none;
-  border-radius: 8px;
-  margin-top: 1.2em;
-  margin-bottom: 0;
   cursor: pointer;
-  transition: background 0.2s;
   text-decoration: none;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.07);
+  box-shadow: var(--shadow-sm);
+  transition: background 0.2s ease, box-shadow 0.2s ease;
+  position: relative;
+  z-index: 2;
+  margin-top: 8px;
+  margin-bottom: 0;
 }
 
 .btn-unirme:hover {
-  background: var(--green-dark);
+  background: #9b59d0;
+  box-shadow: var(--shadow-md);
+}
+
+/* Responsive para carrusel en index */
+@media (max-width: 768px) {
+  .carrusel-full {
+    width: 95%;
+    padding: 18px;
+    border-radius: 20px;
+  }
+  
+  .carrusel-imagenes {
+    height: 280px;
+    border-radius: 12px;
+  }
+  
+  #carrusel-dots {
+    gap: 10px;
+    margin-top: 15px;
+  }
+  
+  .carrusel-dot {
+    width: 2px;
+    height: 2px;
+  }
+  
+  .btn-unirme {
+    font-size: 0.95rem;
+  }
+  
+  .subtitulo {
+    font-size: 0.9rem;
+    padding: 0 10px;
+    margin-bottom: 8px;
+  }
+}
+
+@media (max-width: 480px) {
+  .carrusel-full {
+    padding: 12px;
+    border-radius: 15px;
+  }
+  
+  .carrusel-imagenes {
+    height: 220px;
+    border-radius: 10px;
+  }
+  
+  #carrusel-dots {
+    gap: 8px;
+    margin-top: 12px;
+  }
+  
+  .carrusel-dot {
+    width: 2px;
+    height: 2px;
+  }
+  
+  .btn-unirme {
+    font-size: 0.85rem;
+  }
+  
+  .subtitulo {
+    font-size: 0.8rem;
+  }
 }
 
 /* Cambia el nombre y mejora el estilo del botón Unirse */
@@ -1200,18 +1294,18 @@ form textarea {
   border: 1.5px solid #e0e0e0;
   max-width: var(--card-max);
   width: 100%;
-  margin: 2em auto 0.6em auto;
-  padding: 2em 2em;
+  margin: 0.5em auto 0.5em auto;
+  padding: 1.5em 2em;
   box-sizing: border-box;
   display: flex;
   flex-direction: column;
-  gap: 1.8em;
+  gap: 1em;
   line-height: 1.08;
-  padding-top: 1.2em;
-  padding-bottom: 1.2em;
+  padding-top: 1em;
+  padding-bottom: 1em;
 }
 
-.code-box-registro-main {
+.registro-container-main {
   background: #fff;
   border-radius: 18px;
   box-shadow: 0 2px 12px rgba(120, 80, 180, 0.06);
@@ -1262,11 +1356,11 @@ form {
 }
 
 .form-desc {
-  margin-bottom: -18px;
-  margin-top: 21px;
+  margin-bottom: 0;
+  margin-top: 0.5em;
   color: var(--green-mid);
   text-align: center;
-  font-size: 1.2rem;
+  font-size: 1.1rem;
   font-weight: 500;
   line-height: 1.3;
   max-width: 500px;
@@ -1363,17 +1457,157 @@ form input[type="tel"] {
   font-family: inherit;
 }
 
+/* ============================================
+   CONTENEDOR BLANCO DE VERIFICACIÓN DE CÓDIGO
+   ============================================ */
+
+.code-container-blanco {
+  position: relative;
+  width: 100%;
+  max-width: 600px;
+  background: white;
+  margin: 2em auto;
+  padding: 2.5em 2em;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  box-sizing: border-box;
+  border-radius: 24px;
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.08);
+}
+
+.code-container-blanco .code-title {
+  text-align: center;
+  font-size: 2rem;
+  font-weight: 700;
+  margin: 0 0 0.3em 0;
+  color: var(--green-dark);
+}
+
+.code-container-blanco .code-msg {
+  color: var(--green-mid);
+  font-size: 1.1rem;
+  font-weight: 500;
+  line-height: 1.4;
+  margin-bottom: 1.5em;
+  text-align: center;
+}
+
+.code-container-blanco .verificacion-input-box {
+  background: #f7fbf9;
+  border-radius: 18px;
+  border: 1px solid var(--green-mid); /* borde verde súper fino */
+  margin: 0 auto; /* centrar dentro del contenedor blanco */
+  width: 100%;
+  max-width: 520px; /* no ocupar todo el ancho del contenedor */
+  box-sizing: border-box;
+  padding: 1.4em 1.4em;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 0.5em;
+}
+
+.code-container-blanco .verificacion-label {
+  margin-top: 0;
+  margin-bottom: 0.4em;
+  font-weight: 600;
+  color: var(--green-mid);
+  text-align: left;
+  font-size: 1.05em;
+  line-height: 1.2;
+  width: 100%;
+}
+
+.code-container-blanco .verificacion-input {
+  padding: 14px 18px;
+  font-size: 1.08em;
+  margin-bottom: 0.4em;
+  border-radius: 12px;
+  background: #eaf2ff;
+  color: var(--green-dark);
+  border: 1.5px solid #d0d0d0;
+  width: 100%;
+  box-sizing: border-box;
+  font-family: inherit;
+}
+
+.code-container-blanco .verificacion-input:focus {
+  outline: none;
+  border-color: var(--green-mid);
+  box-shadow: 0 0 0 3px rgba(0, 128, 0, 0.1);
+}
+
+.code-container-blanco .verificacion-btn-verde {
+  background: var(--green-mid);
+  color: white;
+  border-radius: 14px;
+  font-weight: 700;
+  font-size: 1.1em;
+  padding: 14px 0;
+  margin: 0.2em 0;
+  text-align: center;
+  width: 100%;
+  display: block;
+  border: none;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  box-sizing: border-box;
+}
+
+.code-container-blanco .verificacion-btn-verde:hover {
+  background: var(--green-dark);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(0, 128, 0, 0.2);
+}
+
+.code-container-blanco .verificacion-btn-volver {
+  background: #d9d9d9;
+  color: var(--green-mid);
+  border-radius: 14px;
+  font-weight: 700;
+  font-size: 1.1em;
+  padding: 14px 0;
+  margin: 0.3em 0 0 0;
+  text-align: center;
+  width: 100%;
+  display: block;
+  border: none;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  box-sizing: border-box;
+}
+
+.code-container-blanco .verificacion-btn-volver:hover {
+  background: #c0c0c0;
+  transform: translateY(-1px);
+}
+
+@media (max-width: 768px) {
+  .code-container-blanco {
+    max-width: 95%;
+    padding: 2em 1.5em;
+  }
+  
+  .code-container-blanco .verificacion-input-box {
+    padding: 1.5em 1.5em;
+  }
+}
+
+/* ============================================
+   FIN CONTENEDOR BLANCO DE VERIFICACIÓN
+   ============================================ */
+
 /* Agrega en styles.css para ocultar los contenedores por defecto */
-#code-container,
 #perfil-container {
   position: relative;
   z-index: 1;
   width: 100vw;
   max-width: 100vw;
-  min-height: 70vh;
-  background: transparent;
+  min-height: calc(100vh - 180px);
+  background: white;
   margin: 0;
-  padding: 0;
+  padding: 2em 1em 2em 1em;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -1383,6 +1617,7 @@ form input[type="tel"] {
   overflow-y: auto;
   justify-content: flex-start;
   padding-left: 0;
+  border-radius: 20px;
 }
 
 /* Modifica el recuadro debajo de los botones para que tenga borde negro y esquinas rectas */
@@ -1599,16 +1834,20 @@ form input[type="tel"] {
 
 /* Estilo para la página de inicio (inicio.html) inspirado en tus capturas */
 .inicio-titulo {
+  position: relative;
+  z-index: 2;
   text-align: center;
   font-size: 2.2rem;
   font-weight: 700;
   color: var(--green-mid);
-  margin-top: 0.7em;
-  margin-bottom: 0.2em;
+  margin-top: 0.5em;
+  margin-bottom: 1em;
   letter-spacing: 0.01em;
 }
 
 .inicio-subtitulo {
+  position: relative;
+  z-index: 2;
   text-align: center;
   font-size: 1.08rem;
   color: var(--green-dark);
@@ -1619,6 +1858,8 @@ form input[type="tel"] {
 
 
 .buscador-eventos {
+  position: relative;
+  z-index: 2;
   width: 100%;
   max-width: 480px;
   margin: 0.3em auto 1em auto;
@@ -2382,7 +2623,7 @@ form input[type="tel"] {
   border: none;
   max-width: 820px; /* igual que registro */
   width: 100%;
-  margin: 2em auto;
+  margin: 0.5em auto 2em auto;
   padding: 2em 2em;
   box-sizing: border-box;
   display: flex;
@@ -2783,6 +3024,125 @@ form input[type="tel"] {
   background: #bfc3c3;
 }
 
+/* ===== Overrides específicos SOLO para la pantalla de verificación (#code-container) ===== */
+/* Estilos específicos para el contenedor blanco de verificación */
+.code-container-blanco .code-title {
+  text-align: center;
+  font-size: 1.8rem;
+  font-weight: 700;
+  margin: 0 0 0.2em 0;
+  color: var(--green-dark);
+}
+
+.code-container-blanco .code-msg {
+  color: var(--green-mid);
+  font-size: 1.1rem;
+  font-weight: 500;
+  line-height: 1.3;
+  margin-bottom: 0.5em;
+  text-align: center;
+}
+
+.code-container-blanco .verificacion-input-box {
+  background: #f7fbf9;
+  border-radius: 18px;
+  border: 1px solid var(--green-mid); /* borde verde súper fino */
+  margin: 0 auto; /* centrar */
+  width: 100%;
+  max-width: 520px; /* no ocupar todo el ancho del contenedor */
+  box-sizing: border-box;
+  padding: 1.4em 1.4em;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 0.5em;
+}
+
+.code-container-blanco .verificacion-label {
+  margin-top: 0;
+  margin-bottom: 0.3em;
+  font-weight: 600;
+  color: var(--green-mid);
+  text-align: left;
+  font-size: 1em;
+  line-height: 1.2;
+  padding-left: 0;
+  width: 100%;
+}
+
+.code-container-blanco .verificacion-input {
+  padding: 12px 18px;
+  font-size: 1.08em;
+  margin-bottom: 0.4em;
+  border-radius: 10px;
+  background: #eaf2ff;
+  color: var(--green-dark);
+  border: 1.5px solid var(--gray);
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.code-container-blanco .verificacion-btn-verde {
+  background: var(--green-mid);
+  color: var(--white-soft);
+  border-radius: 14px;
+  font-weight: 700;
+  font-size: 1.08em;
+  padding: 12px 0;
+  margin: 0.2em 0;
+  text-align: center;
+  width: 100%;
+  display: block;
+  border: none;
+  cursor: pointer;
+  transition: background 0.2s;
+  box-sizing: border-box;
+}
+
+.code-container-blanco .verificacion-btn-verde:hover {
+  background: var(--green-dark);
+}
+
+.code-container-blanco .verificacion-btn-volver {
+  background: #d9d9d9;
+  color: var(--green-mid);
+  border-radius: 14px;
+  font-weight: 700;
+  font-size: 1.08em;
+  padding: 12px 0;
+  margin: 0.3em 0 0 0;
+  text-align: center;
+  width: 100%;
+  display: block;
+  border: none;
+  cursor: pointer;
+  transition: background 0.2s;
+  box-sizing: border-box;
+}
+
+.code-container-blanco .verificacion-btn-volver:hover {
+  background: #c0c0c0;
+}
+
+/* Estilos heredados para compatibilidad */
+#code-container.registro-container-main {
+  background: #fff;
+  border-radius: 18px;
+  box-shadow: 0 2px 12px rgba(120,80,180,0.06);
+  border: 1.5px solid #e0e0e0;
+  max-width: 600px;
+  width: 100%;
+  margin: 1.2em auto 0.6em auto;
+  padding: 1.5em 1em 1em 1em;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1em;
+}
+
+
+
 /* Estilo compacto para el recuadro de crear usuario */
 .perfil-usuario-titulo {
   text-align: center;
@@ -2797,32 +3157,41 @@ form input[type="tel"] {
 
 .perfil-usuario-subtitulo {
   text-align: center;
-  font-size: 1.08em;
+  font-size: 1.05em;
   color: var(--green-mid);
   font-weight: 500;
-  margin-bottom: 0.5em;
-  margin-top: 0.2em;
+  margin-bottom: 0.8em;
+  margin-top: 0;
 }
 
-/* Recuadro más ancho y campos en paralelo para crear usuario */
+/* ============================================
+   FORMULARIO CREAR USUARIO - COMPACTO
+   ============================================ */
 .perfil-usuario-box-ancho {
-  max-width: 700px;
-  padding: 1.2em 2em;
+  max-width: 650px;
+  width: 100%;
+  padding: 1.8em 2em 2em 2em;
   gap: 0.3em;
+  background: white;
+  border-radius: 20px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+  margin: 0 auto;
+  box-sizing: border-box;
 }
 
 .perfil-row-doble {
   display: flex;
-  gap: 1.5em;
+  gap: 1.2em;
   width: 100%;
   box-sizing: border-box;
   justify-content: space-between;
+  margin-bottom: 0.3em;
 }
 
 .perfil-row-doble > div {
   flex: 1;
   min-width: 0;
-  max-width: calc(50% - 0.75em);
+  max-width: calc(50% - 0.6em);
   box-sizing: border-box;
   display: flex;
   flex-direction: column;
@@ -2831,49 +3200,75 @@ form input[type="tel"] {
 .perfil-row-doble label {
   font-weight: 600;
   color: var(--green-mid);
-  font-size: 1em;
-  margin-bottom: 0.2em;
+  font-size: 0.95em;
+  margin-bottom: 0.3em;
   display: block;
   width: 100%;
+  line-height: 1.1;
 }
 
-.perfil-row-doble input[type="text"] {
+.perfil-row-doble input[type="text"],
+.perfil-row-doble input[type="password"],
+.perfil-row-doble select {
   width: 100% !important;
   min-width: 0 !important;
   max-width: 100% !important;
   box-sizing: border-box;
-  padding: 8px 12px;
+  padding: 10px 12px;
   border-radius: 10px;
-  border: 1.2px solid var(--gray);
+  border: 1.2px solid #d0d0d0;
   background: #eaf2ff;
   color: var(--green-dark);
-  font-size: 1em;
-  margin-bottom: 0.2em;
+  font-size: 0.98em;
+  margin-bottom: 0;
   font-family: inherit;
   display: block;
+}
+
+.perfil-row-doble input:focus,
+.perfil-row-doble select:focus {
+  outline: none;
+  border-color: var(--green-mid);
+  box-shadow: 0 0 0 2px rgba(0, 128, 0, 0.1);
 }
 
 /* Responsive para campos en paralelo */
 @media (max-width: 600px) {
   .perfil-row-doble {
     flex-direction: column;
-    gap: 0.5em;
+    gap: 0.3em;
   }
   
   .perfil-row-doble > div {
     max-width: 100%;
   }
+  
+  .perfil-usuario-box-ancho {
+    padding: 1.5em 1.5em;
+  }
 }
 
 .perfil-usuario-aviso {
-  margin-bottom: 0.2em; /* antes 0.5em */
-  margin-top: 0.3em;
+  margin-bottom: 0.5em;
+  margin-top: 0;
   font-size: 1.05em;
   text-align: center;
   font-weight: 500;
   color: var(--green-mid);
-  line-height: 1.15;
+  line-height: 1.2;
 }
+
+/* Botón de crear usuario */
+#usuario-form .btn-verificar {
+  margin-top: 1em;
+  width: 100%;
+  padding: 12px 0;
+  font-size: 1.05em;
+}
+
+/* ============================================
+   FIN FORMULARIO CREAR USUARIO
+   ============================================ */
 
 /* Mejora la estética del select de sexo en el registro de usuario */
 #usuario-form select#sexo {
@@ -2905,6 +3300,8 @@ form input[type="tel"] {
 
 /* Mejora la estética y alineación del perfil */
 .code-box.perfil-box {
+  position: relative;
+  z-index: 2;
   max-width: 820px;
   width: 100%;
   margin: 2em auto;
@@ -2912,7 +3309,8 @@ form input[type="tel"] {
   border-radius: 18px;
   box-shadow: 0 4px 18px rgba(120,80,180,0.12);
   border: 1.5px solid #b6b6e2;
-  background: #fff;
+  background: rgba(255, 255, 255, 0.98);
+  backdrop-filter: blur(2px);
   display: flex;
   flex-direction: column;
   gap: 1.2em;
@@ -3340,6 +3738,7 @@ form input[type="tel"] {
 
 /* NUEVAS CLASES EXCLUSIVAS PARA CREAR EVENTO */
 .crear-evento-main-nueva {
+  position: relative; /* Necesario para el fondo animado */
   width: 100vw;
   max-width: 100vw;
   min-height: 70vh;
@@ -3351,9 +3750,12 @@ form input[type="tel"] {
   margin: 0;
   box-sizing: border-box;
   gap: 0.5em;
+  overflow: hidden; /* Evitar que los iconos se salgan */
 }
 
 crear-evento-titulo-nueva {
+    position: relative;
+    z-index: 2;
     text-align: center;
     font-size: 1.6rem;
     font-weight: 700;
@@ -3363,7 +3765,10 @@ crear-evento-titulo-nueva {
 }
 
 .crear-evento-box-nueva {
-  background: #fff;
+  position: relative;
+  z-index: 2;
+  background: rgba(255, 255, 255, 0.98);
+  backdrop-filter: blur(2px);
   border-radius: 18px;
   box-shadow: 0 2px 12px rgba(120,80,180,0.06);
   border: 1.5px solid #e0e0e0;
@@ -3840,22 +4245,22 @@ label[for="ubicacion"].crear-evento-label-nueva {
 }
 
 .btn-borrar-evento {
-  background: #c82333;
-  color: white;
+  background: #c1121f; /* mismo rojo que 'No participar' */
+  color: #fff;
   padding: 8px 16px;
   border-radius: 8px;
   font-size: 13px;
-  font-weight: 600;
+  font-weight: 700;
   cursor: pointer;
   border: none;
-  transition: all 0.2s ease;
+  transition: background 0.18s, box-shadow 0.18s, transform 0.18s;
   white-space: nowrap;
 }
 
 .btn-borrar-evento:hover {
-  background: #a71d2a;
+  background: #6a040f; /* hover igual */
   transform: translateY(-1px);
-  box-shadow: 0 2px 8px rgba(200, 35, 51, 0.3);
+  box-shadow: 0 3px 12px rgba(193, 18, 31, 0.25);
 }
 
 .btn-no-participar {
@@ -4125,7 +4530,9 @@ label[for="ubicacion"].crear-evento-label-nueva {
 }
 
 /* Botón 'Salir' con estilo compacto */
-.inicio-btn-salir-nuevo {
+/* Hacer que el botón Admin (Eliminar) tenga EXACTAMENTE el mismo estilo que "No participar" */
+.inicio-btn-salir-nuevo,
+.inicio-btn-eliminar-admin {
   background: #c1121f;
   color: #fff;
   border: none;
@@ -4138,10 +4545,13 @@ label[for="ubicacion"].crear-evento-label-nueva {
   transition: background 0.18s, box-shadow 0.18s;
   cursor: pointer;
 }
-.inicio-btn-salir-nuevo:hover {
+.inicio-btn-salir-nuevo:hover,
+.inicio-btn-eliminar-admin:hover {
   background: #6a040f;
   box-shadow: 0 3px 12px rgba(193, 18, 31, 0.25);
 }
+
+/* Eliminado estilo anterior de admin para que herede exactamente el de "No participar" */
 
 /* Perfil: botón 'No participar' del historial con el MISMO estilo que Inicio/Favoritos */
 .btn-no-participar {
@@ -4586,3 +4996,132 @@ label[for="ubicacion"].crear-evento-label-nueva {
 body[data-protected="true"] {
   display: none !important;
 }
+
+/* ============================================
+   FORMULARIO CREAR USUARIO - ESTILO NUEVO
+   ============================================ */
+.perfil-usuario-titulo {
+  text-align: center;
+  max-width: 700px;
+  margin: 0.6em auto 0.4em auto;
+}
+
+.perfil-usuario-aviso {
+  font-size: 1.05em;
+  color: var(--green-mid);
+  font-weight: 500;
+  line-height: 1.3;
+  margin: 0;
+}
+
+.form-crear-usuario {
+  max-width: 700px;
+  width: 100%;
+  background: white;
+  border-radius: 20px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+  padding: 1.3em 2.2em;
+  margin: 0 auto;
+  box-sizing: border-box;
+}
+
+/* Override COMPLETO para resetear todos los estilos del ID #perfil-container */
+#perfil-container.form-crear-usuario {
+  all: unset;
+  display: block;
+  max-width: 700px;
+  width: 100%;
+  background: white;
+  border-radius: 20px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+  padding: 1.3em 2.2em;
+  margin: 0 auto;
+  box-sizing: border-box;
+}
+
+.form-crear-usuario-titulo {
+  text-align: center;
+  font-size: 1.1em;
+  color: var(--green-mid);
+  font-weight: 600;
+  margin-bottom: 0.5em;
+  margin-top: 0;
+}
+
+/* Filas dobles (Nombre/Apellido, Edad/Sexo, Contraseñas) */
+.form-crear-usuario .perfil-row-doble {
+  display: flex;
+  gap: 1em;
+  width: 100%;
+  margin-bottom: 0.4em;
+}
+
+.form-crear-usuario .perfil-row-doble > div {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.form-crear-usuario .perfil-row-doble label {
+  font-weight: 600;
+  color: var(--green-mid);
+  font-size: 0.95em;
+  margin-bottom: 0.2em;
+  display: block;
+}
+
+.form-crear-usuario .perfil-row-doble input[type="text"],
+.form-crear-usuario .perfil-row-doble input[type="password"],
+.form-crear-usuario .perfil-row-doble select {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 1.5px solid #d0d0d0;
+  background: #eaf2ff;
+  color: var(--green-dark);
+  font-size: 0.95em;
+  font-family: inherit;
+}
+
+.form-crear-usuario .perfil-row-doble input:focus,
+.form-crear-usuario .perfil-row-doble select:focus {
+  outline: none;
+  border-color: var(--green-mid);
+  box-shadow: 0 0 0 3px rgba(0, 128, 0, 0.1);
+}
+
+/* Botón de crear usuario */
+.form-crear-usuario .btn-verificar {
+  width: 100%;
+  margin-top: 0.4em;
+  padding: 12px;
+  font-size: 1em;
+  background: var(--green-dark);
+  color: white;
+  border: none;
+  border-radius: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.form-crear-usuario .btn-verificar:hover {
+  background: var(--green-mid);
+  box-shadow: 0 4px 12px rgba(0, 57, 24, 0.3);
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .form-crear-usuario {
+    padding: 1.2em 1.6em;
+    max-width: 95%;
+  }
+  
+  .form-crear-usuario .perfil-row-doble {
+    flex-direction: column;
+    gap: 0.6em;
+  }
+}
+

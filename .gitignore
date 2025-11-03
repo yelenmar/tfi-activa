@@ -65,5 +65,11 @@ node_modules/
 # dotenv environment variables file
 .env
 
+# Firebase Admin private key (NO subir a git)
+/serviceAccountKey.json
+
+# Opcional: archivos de exportación locales (mantener específicos para no ignorar configs del repo)
+#/export_*.json
+
 # dataconnect generated files
 .dataconnect

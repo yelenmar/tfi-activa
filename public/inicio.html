@@ -6,6 +6,8 @@
   <title>Inicio - Activá</title>
   <link rel="icon" type="image/png" href="img/Acti-removebg-preview.png">
   <link rel="stylesheet" href="css/styles.css">
+  <!-- EmailJS para envío de correos -->
+  <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
   <meta name="firebase-config" content='{"apiKey":"AIzaSyAgufVX3sdXEzTJQC6ZTqv6Clh0Coo4A40","authDomain":"tfi-activa.firebaseapp.com","projectId":"tfi-activa","storageBucket":"tfi-activa.firebasestorage.app","messagingSenderId":"459768332837","appId":"1:459768332837:web:e28594decec0743631b5cc","measurementId":"G-5944BHTK50"}'>
 </head>
 <body data-protected="true">
@@ -52,6 +54,25 @@
         </div>
     </section>
   </main>
+  
+  <!-- Modal confirmación de borrado (reutilizado también para Admin) -->
+  <div id="modal-confirmar-borrado" class="modal modal-confirmar-borrado hidden">
+    <div class="modal-content modal-borrar-content">
+      <div class="modal-borrar-icono">
+        <svg width="64" height="64" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <circle cx="12" cy="12" r="10" stroke="#dc3545" stroke-width="2"/>
+          <path d="M12 7V13" stroke="#dc3545" stroke-width="2" stroke-linecap="round"/>
+          <circle cx="12" cy="16.5" r="1" fill="#dc3545"/>
+        </svg>
+      </div>
+      <h3 class="modal-borrar-titulo">Eliminar evento</h3>
+      <p class="modal-borrar-texto">¿Seguro que querés borrar este evento? Esta acción es permanente.</p>
+      <div class="modal-actions modal-borrar-actions">
+        <button type="button" id="btn-cancelar-borrado" class="btn-base btn-cancelar-borrado">Cancelar</button>
+        <button type="button" id="btn-confirmar-borrado" class="btn-base btn-confirmar-borrado">Borrar definitivamente</button>
+      </div>
+    </div>
+  </div>
   <footer class="footer-tfi">
     TFI INGENIERIA EN SISTEMAS DE INFORMACION 2025. AUTORES : MAROSECK YELENKA Y RUIZ DIAZ LUCIANO
   </footer>

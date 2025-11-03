@@ -2,12 +2,12 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-app.js";
 import { getFirestore, collection, addDoc, getDocs, doc, setDoc, getDoc, deleteDoc, query, where, orderBy, limit } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-firestore.js";
 
-// Configuración EmailJS - COMPLETA CON TUS VALORES
-const EMAILJS_CONFIG = {
-  PUBLIC_KEY: "S5pjW2LUKXjEC3o64",
-  SERVICE_ID: "service_g5avyrb",
-  TEMPLATE_ID: "template_35wpfmm" // ← ID real proporcionado
-};
+// Silenciar logs informativos en producción (mantiene warnings y errores)
+const SILENCE_INFO_LOGS = true;
+if (SILENCE_INFO_LOGS && typeof console !== 'undefined') {
+  console.info = () => {};
+  console.log = () => {};
+}
 
 // ==============================
 // Firebase: init + helpers
@@ -48,7 +48,9 @@ try {
 const saveToFirestore = async (col, data, id) => {
   if (!db) throw new Error('Firestore no inicializado');
   if (id) {
-    await setDoc(doc(db, col, id), { ...data, id });
+    // Usar merge para actualizar solo los campos provistos y no sobreescribir
+    // accidentalmente otros campos existentes en el documento.
+    await setDoc(doc(db, col, id), { ...data, id }, { merge: true });
     return id;
   } else {
     const ref = await addDoc(collection(db, col), data);
@@ -69,9 +71,41 @@ const getFromFirestore = async (col, id) => {
   }
 };
 
+// Consulta por campo (usa where). Operador por defecto '=='
+const getFromFirestoreWhere = async (col, field, op, value) => {
+  if (!db) throw new Error('Firestore no inicializado');
+  const q = query(collection(db, col), where(field, op || '==', value));
+  const snaps = await getDocs(q);
+  const items = [];
+  snaps.forEach(d => items.push({ id: d.id, ...d.data() }));
+  return items;
+};
+
+// Obtener múltiples documentos por ID en paralelo
+const getManyFromFirestore = async (col, ids = []) => {
+  if (!db) throw new Error('Firestore no inicializado');
+  if (!Array.isArray(ids) || ids.length === 0) return [];
+  const proms = ids.map(i => getDoc(doc(db, col, i)));
+  const snaps = await Promise.all(proms);
+  return snaps.filter(s => s.exists()).map(s => ({ id: s.id, ...s.data() }));
+};
+
 const deleteFromFirestore = async (col, id) => {
   if (!db) throw new Error('Firestore no inicializado');
   await deleteDoc(doc(db, col, id));
+};
+
+// ==============================
+// EmailJS: configuración unificada
+// ==============================
+// Configuración actualizada con cuenta de EmailJS "Activa"
+// Service ID: service_qfr7y9j
+// Template ID: template_p7ka3kx (One-Time Password)
+const EMAILJS_CONFIG = {
+  PUBLIC_KEY: '-dIDVhLNDyn8jILqB',       // Nueva Public Key provista
+  SERVICE_ID: 'service_qfr7y9j',         // Nuevo servicio "Activa"
+  TEMPLATE_ID: 'template_p7ka3kx',       // Nuevo template OTP
+  TEMPLATE_ID_NOTIF: ''                  // Opcional: template para notificaciones
 };
 
 // ==============================
@@ -94,6 +128,79 @@ const setLocalFavoritosSet = (userId, setVals) => {
     localStorage.setItem(`fav_local_${userId}`, JSON.stringify(arr));
   } catch (e) {
     console.warn('No se pudo guardar favoritos locales:', e);
+  }
+};
+
+// ==============================
+// Sistema de Administrador
+// ==============================
+// Lista de correos con permisos de administrador (permite variantes por posible tipado)
+const ADMIN_EMAILS = [
+  'activaapp.oficial@gmail.com',
+  'activapp.oficial@gmail.com'
+];
+
+// Normaliza emails para comparación robusta
+// - lower-case y trim
+// - si es gmail: remueve puntos en la parte local y ignora '+alias'
+const normalizarEmail = (email) => {
+  if (!email || typeof email !== 'string') return '';
+  const e = email.trim().toLowerCase();
+  const [local, domain] = e.split('@');
+  if (!domain) return e;
+  if (domain === 'gmail.com' || domain === 'googlemail.com') {
+    const sinMas = local.split('+')[0];
+    const sinPuntos = sinMas.replace(/\./g, '');
+    return `${sinPuntos}@gmail.com`;
+  }
+  return `${local}@${domain}`;
+};
+
+// Verificar si el usuario actual es administrador
+const esAdministrador = async () => {
+  try {
+    const userId = localStorage.getItem('userId') || localStorage.getItem('currentUserId');
+    if (!userId) return false;
+
+    const adminNorms = ADMIN_EMAILS.map(normalizarEmail);
+
+    // 1) Intentar por documento en 'usuarios'
+    const usuario = await getFromFirestore('usuarios', userId);
+    let emailCandidato = '';
+    if (usuario) {
+      // Preferir 'email'; si no, usar 'destino' si parece correo
+      if (usuario.email && typeof usuario.email === 'string') {
+        emailCandidato = usuario.email;
+      } else if (usuario.destino && typeof usuario.destino === 'string' && /@/.test(usuario.destino)) {
+        emailCandidato = usuario.destino;
+      }
+    }
+
+    if (emailCandidato) {
+      const norm = normalizarEmail(emailCandidato);
+      if (adminNorms.includes(norm)) return true;
+    }
+
+    // 2) Fallback: comparar por userId contra versión saneada del email admin
+    //    (coincide con el esquema usado para IDs: reemplazar @, +, espacios, guiones y puntos por '_')
+    const sanitizeId = (e) => e.replace(/[@\s\+\-\.]/g, '_');
+    for (const adminRaw of ADMIN_EMAILS) {
+      if (sanitizeId(adminRaw) === userId) return true;
+      // También probar con el normalizado gmail (sin puntos)
+      if (sanitizeId(normalizarEmail(adminRaw)) === userId) return true;
+    }
+
+    // 3) Fallback extra: intentar leer perfil por si el correo está allí
+    const perfil = await getFromFirestore('perfiles', userId);
+    if (perfil && perfil.email) {
+      const normPerfil = normalizarEmail(perfil.email);
+      if (adminNorms.includes(normPerfil)) return true;
+    }
+
+    return false;
+  } catch (error) {
+    console.error('Error verificando administrador:', error);
+    return false;
   }
 };
 
@@ -140,6 +247,370 @@ const crearFechaLocal = (fechaISO, horaStr) => {
   // Crear fecha local sin conversión de zona horaria
   return new Date(year, month - 1, day, hours, minutes);
 };
+
+// ==============================
+// SISTEMA DE NOTIFICACIONES (Email y WhatsApp)
+// ==============================
+
+// Tipos de notificaciones
+const TIPO_NOTIF = {
+  RECORDATORIO_3DIAS: 'recordatorio_3dias',
+  RECORDATORIO_DIA: 'recordatorio_dia',
+  EVENTO_DISPONIBLE: 'evento_disponible',
+  EVENTO_EDITADO: 'evento_editado',
+  EVENTO_CANCELADO: 'evento_cancelado',
+  CONFIRMAR_ASISTENCIA: 'confirmar_asistencia',
+  CONFIRMACION_RECIBIDA: 'confirmacion_recibida'
+};
+
+/**
+ * Enviar email usando EmailJS
+ * @param {string} destinatario - Email del destinatario
+ * @param {string} asunto - Asunto del email
+ * @param {string} mensaje - Contenido del mensaje
+ */
+async function enviarEmail(destinatario, asunto, mensaje) {
+  try {
+    // Asegurar que EmailJS esté cargado e inicializado
+    if (typeof loadEmailJS === 'function') {
+      await loadEmailJS();
+    }
+    // Usar el template OTP para todas las notificaciones
+    // El mensaje se envía en el campo verification_code para que se vea en el cuerpo
+    const templateParams = {
+      // Enviar múltiples aliases para cubrir distintas configuraciones de plantilla
+      to_email: destinatario,
+      email: destinatario,
+      user_email: destinatario,
+      reply_to: destinatario,
+      to: destinatario,
+      // Contenido
+      verification_code: mensaje,
+      codigo: mensaje,
+      code: mensaje,
+      subject: asunto || 'Notificación',
+      app_name: 'Activá'
+    };
+    const response = await emailjs.send(
+      EMAILJS_CONFIG.SERVICE_ID,
+      EMAILJS_CONFIG.TEMPLATE_ID,
+      templateParams
+    );
+    
+    console.log('Email enviado exitosamente:', response);
+    return true;
+  } catch (error) {
+    console.error('Error al enviar email:', error);
+    return false;
+  }
+}
+
+/**
+ * Enviar mensaje por WhatsApp usando WhatsApp Business API
+ * @param {string} numeroTelefono - Número de teléfono con código de país (ej: +541112345678)
+ * @param {string} mensaje - Mensaje a enviar
+ */
+function enviarWhatsApp(numeroTelefono, mensaje) {
+  try {
+    // Limpiar número (quitar espacios, guiones, etc.)
+    const numeroLimpio = numeroTelefono.replace(/[^\d+]/g, '');
+    
+    // Crear URL de WhatsApp con el mensaje pre-formateado
+    const mensajeCodificado = encodeURIComponent(mensaje);
+    const urlWhatsApp = `https://wa.me/${numeroLimpio}?text=${mensajeCodificado}`;
+    
+    // Abrir WhatsApp en nueva pestaña (el usuario debe enviar manualmente)
+    // Para envío automático necesitarías WhatsApp Business API con credenciales
+    window.open(urlWhatsApp, '_blank');
+    
+    console.log('WhatsApp abierto para:', numeroLimpio);
+    return true;
+  } catch (error) {
+    console.error('Error al abrir WhatsApp:', error);
+    return false;
+  }
+}
+
+/**
+ * Guardar notificación en Firestore (registro/historial)
+ */
+async function registrarNotificacion(userId, tipo, eventoId, mensaje, metadata = {}) {
+  try {
+    const notifId = `${userId}_${eventoId}_${tipo}_${Date.now()}`;
+    const notifRef = doc(db, 'notificaciones', notifId);
+    
+    // Limpiar metadata: eliminar valores undefined (Firestore no los permite)
+    const metadataLimpio = {};
+    for (const key in metadata) {
+      if (metadata[key] !== undefined && metadata[key] !== null) {
+        metadataLimpio[key] = metadata[key];
+      }
+    }
+    
+    await setDoc(notifRef, {
+      userId,
+      tipo,
+      eventoId,
+      mensaje,
+      leida: false,
+      fechaCreacion: new Date().toISOString(),
+      fechaEnvio: new Date().toISOString(),
+      metadata: metadataLimpio
+    });
+    
+    console.log('Notificación registrada:', notifId);
+    return true;
+  } catch (error) {
+    console.error('Error al registrar notificación:', error);
+    return false;
+  }
+}
+
+/**
+ * Enviar notificación a un usuario (email o WhatsApp según su preferencia)
+ */
+async function enviarNotificacion(userId, tipo, eventoId, mensaje, metadata = {}) {
+  try {
+    // Obtener datos del usuario
+    const userRef = doc(db, 'usuarios', userId);
+    const userSnap = await getDoc(userRef);
+    
+    if (!userSnap.exists()) {
+      console.error('Usuario no encontrado:', userId);
+      return false;
+    }
+    
+    const usuario = userSnap.data();
+    const metodo = usuario.metodoComunicacion || 'email';
+    const notificacionesActivas = usuario.notificacionesActivas !== false; // Por defecto true
+    
+    // Si el usuario desactivó notificaciones, no enviar
+    if (!notificacionesActivas) {
+      console.log('Usuario tiene notificaciones desactivadas:', userId);
+      return false;
+    }
+    
+    // Registrar en Firestore
+    await registrarNotificacion(userId, tipo, eventoId, mensaje, metadata);
+    
+    // Enviar según método preferido
+    let enviado = false;
+    if (metodo === 'email' && usuario.email) {
+      const asunto = `Activá - ${metadata.tituloEvento || 'Notificación'}`;
+      enviado = await enviarEmail(usuario.email, asunto, mensaje);
+    } else if (metodo === 'telefono' && usuario.telefono) {
+      enviado = enviarWhatsApp(usuario.telefono, mensaje);
+    }
+    
+    if (enviado) {
+      console.log(`Notificación enviada a ${usuario.nombre} vía ${metodo}`);
+    }
+    
+    return enviado;
+  } catch (error) {
+    console.error('Error al enviar notificación:', error);
+    return false;
+  }
+}
+
+/**
+ * Notificar a todos los participantes de un evento
+ */
+async function notificarParticipantes(eventoId, tipo, mensaje, metadata = {}) {
+  try {
+    // Obtener evento
+    const eventoRef = doc(db, 'eventos', eventoId);
+    const eventoSnap = await getDoc(eventoRef);
+    
+    if (!eventoSnap.exists()) {
+      console.error('Evento no encontrado:', eventoId);
+      return;
+    }
+    
+    const evento = eventoSnap.data();
+    const participantes = Array.isArray(evento.participantes)
+      ? evento.participantes
+      : (Array.isArray(evento.usuariosUnidos) ? evento.usuariosUnidos : []);
+    
+    if (participantes.length === 0) {
+      console.log('No hay participantes para notificar');
+      return;
+    }
+    
+    // Agregar título del evento a metadata
+    metadata.tituloEvento = evento.titulo;
+    
+    // Enviar notificación a cada participante
+    console.log(`Notificando a ${participantes.length} participantes del evento "${evento.titulo}"`);
+    
+    const promesas = participantes.map(userId => 
+      enviarNotificacion(userId, tipo, eventoId, mensaje, metadata)
+    );
+    
+    await Promise.allSettled(promesas);
+    console.log('Notificaciones enviadas a participantes');
+  } catch (error) {
+    console.error('Error al notificar participantes:', error);
+  }
+}
+
+/**
+ * Notificar a todos los usuarios activos (excepto participantes)
+ */
+async function notificarTodosUsuarios(eventoId, mensaje, metadata = {}) {
+  try {
+    // Obtener evento
+    const eventoRef = doc(db, 'eventos', eventoId);
+    const eventoSnap = await getDoc(eventoRef);
+    
+    if (!eventoSnap.exists()) return;
+    
+    const evento = eventoSnap.data();
+    const participantes = Array.isArray(evento.participantes)
+      ? evento.participantes
+      : (Array.isArray(evento.usuariosUnidos) ? evento.usuariosUnidos : []);
+    
+    // Obtener todos los usuarios
+    const usuariosRef = collection(db, 'usuarios');
+    const usuariosSnap = await getDocs(usuariosRef);
+    
+    if (usuariosSnap.empty) return;
+    
+    // Filtrar usuarios que NO son participantes
+    const usuariosNoParticipantes = [];
+    usuariosSnap.forEach(doc => {
+      if (!participantes.includes(doc.id)) {
+        usuariosNoParticipantes.push(doc.id);
+      }
+    });
+    
+    if (usuariosNoParticipantes.length === 0) {
+      console.log('No hay usuarios para notificar (todos son participantes)');
+      return;
+    }
+    
+    metadata.tituloEvento = evento.titulo;
+    
+    console.log(`Notificando a ${usuariosNoParticipantes.length} usuarios sobre evento disponible`);
+    
+    const promesas = usuariosNoParticipantes.map(userId =>
+      enviarNotificacion(userId, TIPO_NOTIF.EVENTO_DISPONIBLE, eventoId, mensaje, metadata)
+    );
+    
+    await Promise.allSettled(promesas);
+    console.log('Notificaciones broadcast enviadas');
+  } catch (error) {
+    console.error('Error al notificar a todos los usuarios:', error);
+  }
+}
+
+/**
+ * Generar recordatorios diarios automáticos
+ * Esta función debe ejecutarse diariamente (idealmente con Cloud Functions)
+ */
+async function generarRecordatoriosDiarios() {
+  try {
+    console.log('Generando recordatorios diarios...');
+    
+    const ahora = new Date();
+    const hoy = new Date(ahora.getFullYear(), ahora.getMonth(), ahora.getDate());
+    const tresDias = new Date(hoy);
+    tresDias.setDate(tresDias.getDate() + 3);
+    
+    // Obtener todos los eventos
+    const eventosRef = collection(db, 'eventos');
+    const eventosSnap = await getDocs(eventosRef);
+    
+    if (eventosSnap.empty) {
+      console.log('No hay eventos para procesar');
+      return;
+    }
+    
+    for (const docSnap of eventosSnap.docs) {
+      const evento = docSnap.data();
+      const eventoId = docSnap.id;
+      
+      // Parsear fecha del evento
+      const fechaEvento = crearFechaLocal(evento.fecha, evento.hora);
+      if (!fechaEvento) continue;
+      
+      const fechaEventoSolo = new Date(fechaEvento.getFullYear(), fechaEvento.getMonth(), fechaEvento.getDate());
+      
+      // === RECORDATORIO 3 DÍAS ANTES (CONFIRMACIÓN) ===
+      if (fechaEventoSolo.getTime() === tresDias.getTime()) {
+        const mensaje = `🔔 Recordatorio: Confirmá tu asistencia al evento "${evento.titulo}"\n\n` +
+          `📅 Fecha: ${formatearFechaArgentina(evento.fecha)}\n` +
+          `🕐 Hora: ${formatearHoraArgentina(evento.hora)}\n` +
+          `📍 Lugar: ${evento.lugar}\n\n` +
+          `Por favor, confirmá si vas a asistir. Si no podés ir, cancelá para liberar tu cupo.`;
+        
+        await notificarParticipantes(
+          eventoId,
+          TIPO_NOTIF.CONFIRMAR_ASISTENCIA,
+          mensaje,
+          { fecha: evento.fecha, hora: evento.hora, lugar: evento.lugar }
+        );
+      }
+      
+      // === RECORDATORIO DÍA DEL EVENTO ===
+      if (fechaEventoSolo.getTime() === hoy.getTime()) {
+        // 1. Recordatorio a participantes
+        const mensajeParticipantes = `⏰ ¡Hoy es el evento "${evento.titulo}"!\n\n` +
+          `🕐 Hora: ${formatearHoraArgentina(evento.hora)}\n` +
+          `📍 Lugar: ${evento.lugar}\n\n` +
+          `¡Te esperamos!`;
+        
+        await notificarParticipantes(
+          eventoId,
+          TIPO_NOTIF.RECORDATORIO_DIA,
+          mensajeParticipantes,
+          { fecha: evento.fecha, hora: evento.hora, lugar: evento.lugar }
+        );
+        
+        // 2. Si hay cupos disponibles, notificar a todos los usuarios
+        const unidos = Array.isArray(evento.participantes)
+          ? evento.participantes.length
+          : (Array.isArray(evento.usuariosUnidos) ? evento.usuariosUnidos.length : Number(evento.unidos || 0));
+        const maxPersonas = evento.maxPersonas || 0;
+        
+        if (unidos < maxPersonas) {
+          const cuposDisponibles = maxPersonas - unidos;
+          const mensajeCupos = `🎉 ¡Cupos disponibles para HOY!\n\n` +
+            `📌 Evento: ${evento.titulo}\n` +
+            `🕐 Hora: ${formatearHoraArgentina(evento.hora)}\n` +
+            `📍 Lugar: ${evento.lugar}\n` +
+            `👥 Cupos disponibles: ${cuposDisponibles}\n\n` +
+            `¡Sumate ahora!`;
+          
+          await notificarTodosUsuarios(
+            eventoId,
+            mensajeCupos,
+            { fecha: evento.fecha, hora: evento.hora, lugar: evento.lugar, cuposDisponibles }
+          );
+        }
+      }
+    }
+    
+    console.log('Recordatorios diarios generados exitosamente');
+  } catch (error) {
+    console.error('Error al generar recordatorios diarios:', error);
+  }
+}
+
+/**
+ * Iniciar sistema de notificaciones (ejecutar recordatorios)
+ * En producción, esto debería ser una Cloud Function con cron job
+ */
+function iniciarSistemaNotificaciones() {
+  // Ejecutar al iniciar
+  generarRecordatoriosDiarios();
+  
+  // Ejecutar cada 24 horas (86400000 ms)
+  // Para desarrollo, puedes usar 1 hora (3600000)
+  setInterval(generarRecordatoriosDiarios, 86400000);
+  
+  console.log('Sistema de notificaciones iniciado');
+}
 
 // ==============================
 // Helpers DOM
@@ -235,12 +706,21 @@ const loadEmailJS = () => {
   return new Promise((resolve, reject) => {
     if (window.emailjs) {
       console.log("📚 EmailJS ya está cargado");
+      // Asegurar inicialización aunque ya esté cargado por <script>
+      try {
+        if (EMAILJS_CONFIG && EMAILJS_CONFIG.PUBLIC_KEY) {
+          emailjs.init(EMAILJS_CONFIG.PUBLIC_KEY);
+          console.log("✅ EmailJS inicializado (cargado previamente)");
+        }
+      } catch (e) {
+        console.warn("⚠️ EmailJS ya estaba inicializado o ocurrió un aviso:", e?.message || e);
+      }
       resolve();
       return;
     }
     console.log("📥 Descargando librería EmailJS...");
     const script = document.createElement('script');
-    script.src = 'https://cdn.jsdelivr.net/npm/@emailjs/browser@3/dist/email.min.js';
+  script.src = 'https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js';
     script.onload = () => {
       try {
         console.log("🔧 Inicializando EmailJS con Public Key:", EMAILJS_CONFIG.PUBLIC_KEY);
@@ -263,7 +743,19 @@ const loadEmailJS = () => {
 const enviarCodigoEmail = async (email, codigo) => {
   try {
     await loadEmailJS();
-    const params = { to_email: email, codigo };
+    // Proveer todos los aliases típicos que puede usar el template en EmailJS
+    const params = {
+      to_email: email,
+      email: email,
+      user_email: email,
+      reply_to: email,
+      to: email,
+      verification_code: codigo,
+      codigo: codigo,
+      code: codigo,
+      subject: 'Código de verificación',
+      app_name: 'Activá'
+    };
     const result = await emailjs.send(EMAILJS_CONFIG.SERVICE_ID, EMAILJS_CONFIG.TEMPLATE_ID, params);
     return { success: true, result };
   } catch (error) {
@@ -271,6 +763,12 @@ const enviarCodigoEmail = async (email, codigo) => {
     const msg = error?.message || error?.text || 'Error desconocido';
     return { success: false, error: msg };
   }
+};
+
+// Stub seguro para SMS (evita errores si se selecciona Teléfono)
+const enviarCodigoSMS = async (telefono, codigo) => {
+  console.warn('SMS no implementado. Teléfono recibido:', telefono, 'Código:', codigo);
+  return { success: false, error: 'El envío por SMS no está disponible en este momento.' };
 };
 
 // Sistema de mensajes (toast)
@@ -318,11 +816,11 @@ const mostrarMensajeError = (msg) => mostrarToast(msg, 'error');
 const actualizarContadoresEvento = (eventoId, nuevosUnidos, maxPersonas) => {
   const cards = document.querySelectorAll(`[data-evento-id="${eventoId}"]`);
   cards.forEach(el => {
-    const card = el.closest('.inicio-card-evento, .evento-card');
+    const card = el.closest('.inicio-card-evento, .evento-card, .favoritos-card-evento');
     if (!card) return;
     
     const nuevosDisponibles = maxPersonas - nuevosUnidos;
-    const personasSpan = card.querySelector('.inicio-detalles-evento span:last-child, .evento-detalles span:last-child');
+    const personasSpan = card.querySelector('.inicio-detalles-evento span:last-child, .evento-detalles span:last-child, .favoritos-detalles-evento span:last-child');
     
     if (personasSpan) {
       personasSpan.innerHTML = `
@@ -334,8 +832,120 @@ const actualizarContadoresEvento = (eventoId, nuevosUnidos, maxPersonas) => {
   });
 };
 
+// Función helper para actualizar TODOS los datos visibles de un evento en todas las vistas (inicio, favoritos, historial)
+const actualizarTarjetasEventoEnTodasLasVistas = (eventoId, eventoActualizado) => {
+  console.log('🔄 Actualizando tarjetas del evento en todas las vistas:', eventoId);
+  
+  // Buscar todas las tarjetas de este evento (inicio, favoritos, perfil/historial)
+  const cards = document.querySelectorAll(`[data-evento-id="${eventoId}"]`);
+  
+  cards.forEach(el => {
+    const card = el.closest('.inicio-card-evento, .favoritos-card-evento');
+    if (!card) return;
+    
+    // Actualizar título
+    const tituloEl = card.querySelector('.inicio-titulo-evento, .favoritos-titulo-evento');
+    if (tituloEl && eventoActualizado.titulo) {
+      tituloEl.textContent = eventoActualizado.titulo;
+    }
+    
+    // Actualizar descripción
+    const descEl = card.querySelector('.inicio-descripcion-evento, .favoritos-descripcion-evento');
+    if (descEl && eventoActualizado.descripcion) {
+      descEl.textContent = eventoActualizado.descripcion;
+    }
+    
+    // Actualizar detalles (fecha, hora, ubicación, participantes)
+    const detallesContainer = card.querySelector('.inicio-detalles-evento, .favoritos-detalles-evento');
+    if (detallesContainer && eventoActualizado.fecha && eventoActualizado.hora && eventoActualizado.ubicacion) {
+      const fechaFormateada = formatearFechaArgentina(eventoActualizado.fecha);
+      const horaFormateada = formatearHoraArgentina(eventoActualizado.hora);
+      const unidos = Array.isArray(eventoActualizado.participantes) 
+        ? eventoActualizado.participantes.length 
+        : Number(eventoActualizado.unidos || 0);
+      const disponibles = Math.max(0, Number(eventoActualizado.maxPersonas || 0) - unidos);
+      
+      detallesContainer.innerHTML = `
+        <span><img src="img/calendario.png" alt="Fecha" class="icono-evento"> ${fechaFormateada}</span>
+        <span><img src="img/reloj-circular.png" alt="Hora" class="icono-evento"> ${horaFormateada}</span>
+        <span><img src="img/ubicacion.png" alt="Ubicación" class="icono-evento"> ${eventoActualizado.ubicacion}</span>
+        <span><img src="img/personas.png" alt="Participantes" class="icono-evento"> ${unidos}/${eventoActualizado.maxPersonas} unidos <span class="evento-disponibles-texto">(${disponibles} lugares disponibles)</span></span>
+      `;
+    }
+    
+    // Actualizar link de grupo si existe
+    const linkGrupoRow = card.querySelector('.inicio-link-grupo-row, .favoritos-link-grupo-row');
+    const userId = localStorage.getItem('userId') || localStorage.getItem('currentUserId');
+    const yaParticipa = Array.isArray(eventoActualizado.participantes) && eventoActualizado.participantes.includes(userId);
+    const esOrganizador = eventoActualizado.organizadorId === userId;
+    
+    if (eventoActualizado.linkGrupo && String(eventoActualizado.linkGrupo).trim() && (yaParticipa || esOrganizador)) {
+      if (!linkGrupoRow) {
+        // Crear el row si no existe
+        const descEl = card.querySelector('.inicio-descripcion-evento, .favoritos-descripcion-evento');
+        if (descEl) {
+          const nuevoLinkRow = document.createElement('div');
+          nuevoLinkRow.className = card.classList.contains('inicio-card-evento') ? 'inicio-link-grupo-row' : 'favoritos-link-grupo-row';
+          nuevoLinkRow.innerHTML = `
+            <span>Link de grupo:</span>
+            <a href="${eventoActualizado.linkGrupo}" target="_blank" rel="noopener noreferrer">${eventoActualizado.linkGrupo}</a>
+          `;
+          descEl.after(nuevoLinkRow);
+        }
+      } else {
+        // Actualizar el link existente
+        const linkEl = linkGrupoRow.querySelector('a');
+        if (linkEl) {
+          linkEl.href = eventoActualizado.linkGrupo;
+          linkEl.textContent = eventoActualizado.linkGrupo;
+        }
+      }
+    } else if (linkGrupoRow) {
+      // Remover el link si ya no debe mostrarse
+      linkGrupoRow.remove();
+    }
+  });
+  
+  console.log(`✅ ${cards.length} tarjetas actualizadas`);
+};
+
 // Registrar en fase de captura y burbuja, y soportar dispositivos táctiles
-document.addEventListener("DOMContentLoaded", () => {
+document.addEventListener("DOMContentLoaded", async () => {
+  // 0) Inicializar estado de administrador
+  try {
+    window._isAdmin = await esAdministrador();
+    if (window._isAdmin) {
+      console.log('✅ Usuario administrador detectado');
+    }
+  } catch (error) {
+    console.error('❌ Error al verificar estado de administrador:', error);
+    window._isAdmin = false;
+  }
+
+  // 0.1) Prefetch ligero de perfil si falta caché (mejora primera pintura en perfil.html)
+  try {
+    const uid = localStorage.getItem('currentUserId');
+    const tieneCacheBasica = !!(localStorage.getItem('currentUserName') || localStorage.getItem('perfilSexo') || localStorage.getItem('userPhoto'));
+    if (uid && !tieneCacheBasica) {
+      const [perfil, usuario] = await Promise.all([
+        getFromFirestore('perfiles', uid),
+        getFromFirestore('usuarios', uid)
+      ]);
+      const nombre = (perfil?.nombre) || usuario?.nombre || '';
+      const apellido = (perfil?.apellido) || usuario?.apellido || '';
+      const edad = (perfil?.edad) || usuario?.edad;
+      const sexo = (perfil?.sexo) || usuario?.sexo;
+      const descripcion = perfil?.descripcion || '';
+      const foto = (perfil?.foto) || usuario?.foto;
+      const nombreCompleto = [nombre, apellido].filter(Boolean).join(' ').trim();
+      if (nombreCompleto) localStorage.setItem('currentUserName', nombreCompleto);
+      if (edad !== undefined) localStorage.setItem('perfilEdad', String(edad));
+      if (sexo) localStorage.setItem('perfilSexo', sexo);
+      if (descripcion) localStorage.setItem('perfilDescripcion', descripcion);
+      if (foto) localStorage.setItem('userPhoto', foto);
+    }
+  } catch {}
+
   // 1) Carrusel simple (index.html)
   const carruselImgs = $$('.img-actividad');
   const dotsContainer = $('#carrusel-dots');
@@ -366,7 +976,9 @@ document.addEventListener("DOMContentLoaded", () => {
 
   // 2) Fondo animado con íconos (si existe contenedor)
   const fondos = $$('.fondo-animado');
-  fondos.forEach(fondo => {
+  console.log('🎨 Fondos animados encontrados:', fondos.length);
+  fondos.forEach((fondo, index) => {
+    console.log(`🎨 Inicializando fondo ${index + 1} en:`, fondo.parentElement?.tagName);
     const iconos = [
       'cafe-con-leche-matcha.png','camara-fotografica.png','campamento-nocturno.png','camping-table.png','cocinando.png','corredor.png','deporte.png','ejercicios-de-estiramiento.png','frito.png','guitarra-electrica.png','juego (1).png','juego (2).png','juego (3).png','juego (4).png','juego.png','jugador-de-futbol.png','kayac.png','lectura.png','libro.png','linea.png','maquilladora.png','martini.png','microfono.png','origami.png','paleta-de-pintura.png','persona.png','piano (1).png','silla-de-playa.png','sillas.png','te-de-mate.png','teatro.png','tejido-de-punto.png','yoga (1).png','yoga.png'
     ];
@@ -378,7 +990,10 @@ document.addEventListener("DOMContentLoaded", () => {
         const header = document.querySelector('.header-principal');
         return header ? header.offsetHeight : 120;
       } else {
-        const main = document.querySelector('.main-container');
+        // Buscar el contenedor main según la página
+        const main = document.querySelector('.main-container') || 
+                     document.querySelector('.crear-evento-main-nueva') ||
+                     document.querySelector('main');
         return (main && main.scrollHeight) || document.documentElement.scrollHeight || document.body.scrollHeight || window.innerHeight;
       }
     };
@@ -388,6 +1003,7 @@ document.addEventListener("DOMContentLoaded", () => {
       isRendering = true;
       
       const alto = getAlto();
+      console.log(`📏 Alto calculado para fondo: ${alto}px`);
       fondo.style.height = alto + 'px';
       
       // Solo limpiar si hay contenido previo
@@ -444,16 +1060,27 @@ document.addEventListener("DOMContentLoaded", () => {
       }
       
       fondo.appendChild(fragment);
+      console.log(`✅ ${total} íconos agregados al fondo`);
       isRendering = false;
     };
     
     // Renderizado inicial
+    console.log('🚀 Iniciando renderizado de fondo...');
     renderFondo();
     
     // Re-renderizar después de un delay para asegurar que el main esté completamente cargado
-  setTimeout(renderFondo, 1500);
-  setTimeout(renderFondo, 3000);
-  setTimeout(renderFondo, 4500); // refuerzo extra para cargas lentas
+    setTimeout(() => {
+      console.log('⏱️ Re-renderizando después de 1.5s...');
+      renderFondo();
+    }, 1500);
+    setTimeout(() => {
+      console.log('⏱️ Re-renderizando después de 3s...');
+      renderFondo();
+    }, 3000);
+    setTimeout(() => {
+      console.log('⏱️ Re-renderizando después de 4.5s...');
+      renderFondo();
+    }, 4500); // refuerzo extra para cargas lentas
    
     // Resize con debounce
     let resizeTimeout;
@@ -464,7 +1091,9 @@ document.addEventListener("DOMContentLoaded", () => {
     
     // Observer SOLO para eventos significativos en el main (evitar bucle infinito)
     if (!fondo.classList.contains('fondo-animado-header')) {
-      const main = document.querySelector('.main-container');
+      const main = document.querySelector('.main-container') || 
+                   document.querySelector('.crear-evento-main-nueva') ||
+                   document.querySelector('main');
       if (main && window.MutationObserver) {
         let observerTimeout;
         const observer = new MutationObserver((mutations) => {
@@ -552,6 +1181,25 @@ document.addEventListener("DOMContentLoaded", () => {
         }
         
         console.log("Destino:", destino);
+
+        // Control: evitar registro con correo/teléfono ya registrado
+        try {
+          const posibleUserId = destino.replace(/[@\s\+\-\.]/g, '_');
+          const yaExiste = await getFromFirestore('usuarios', posibleUserId);
+          if (yaExiste) {
+            const esCorreo = /@/.test(destino);
+            const texto = esCorreo
+              ? 'Este correo ya está registrado. Iniciá sesión para continuar.'
+              : 'Este teléfono ya está registrado. Iniciá sesión para continuar.';
+            mostrarMensajeError(texto);
+            // Redirigir suavemente al login
+            setTimeout(() => { window.location.href = 'login.html'; }, 1400);
+            return;
+          }
+        } catch (eVerif) {
+          console.warn('No se pudo verificar duplicados, continuo con el envío del código:', eVerif);
+          // Continuamos con el flujo para no bloquear si Firestore falla temporalmente
+        }
         
         // Generar código
         codigoGenerado = (Math.floor(100000 + Math.random() * 900000)).toString();
@@ -777,21 +1425,30 @@ document.addEventListener("DOMContentLoaded", () => {
           fechaActualizacion: new Date().toISOString()
         };
         await saveToFirestore("perfiles", perfil, userId);
-          // Persistir datos útiles y caché para próximas visitas
-          const nombreCompleto = [nombre, apellido].filter(Boolean).join(' ').trim();
-          if (nombreCompleto) localStorage.setItem('currentUserName', nombreCompleto);
-          if (edad) localStorage.setItem('perfilEdad', String(edad));
-          if (sexo) localStorage.setItem('perfilSexo', sexo);
-          if (descripcion) localStorage.setItem('perfilDescripcion', descripcion);
-          if (foto) localStorage.setItem('userPhoto', foto);
-        mostrarMensajeExito("¡Perfil guardado exitosamente!");
-        
-  // Cerrar el formulario de edición y mostrar la vista normal
-  perfilForm.classList.add('hidden');
-  if (btnEditarPerfil) btnEditarPerfil.classList.remove('hidden');
-        
-        // Recargar datos en la vista sin redirigir
-        await loadPerfil();
+      // También actualizar todos los datos editados en la colección 'usuarios'
+      await saveToFirestore("usuarios", {
+        nombre,
+        apellido,
+        edad: parseInt(edad),
+        sexo,
+        descripcion,
+        foto
+      }, userId);
+      // Persistir datos útiles y caché para próximas visitas
+      const nombreCompleto = [nombre, apellido].filter(Boolean).join(' ').trim();
+      if (nombreCompleto) localStorage.setItem('currentUserName', nombreCompleto);
+      if (edad) localStorage.setItem('perfilEdad', String(edad));
+      if (sexo) localStorage.setItem('perfilSexo', sexo);
+      if (descripcion) localStorage.setItem('perfilDescripcion', descripcion);
+      if (foto) localStorage.setItem('userPhoto', foto);
+      mostrarMensajeExito("¡Perfil guardado exitosamente!");
+
+      // Cerrar el formulario de edición y mostrar la vista normal
+      perfilForm.classList.add('hidden');
+      if (btnEditarPerfil) btnEditarPerfil.classList.remove('hidden');
+
+      // Recargar datos en la vista sin redirigir
+      await loadPerfil();
       });
     }
 
@@ -828,20 +1485,43 @@ document.addEventListener("DOMContentLoaded", () => {
         perfilFotoFormEl.src = cacheFoto || DEFAULT_AVATAR;
       }
 
-      // Traer datos en paralelo
-      const [usuarioDataRaw, perfilDataRaw] = await Promise.all([
-        getFromFirestore('usuarios', userId),
-        getFromFirestore('perfiles', userId)
-      ]);
-      const usuarioData = usuarioDataRaw || {};
-      const perfilData = perfilDataRaw || {};
+      // Traer datos priorizando 'perfiles' (si existe evitamos la 2da lectura)
+      let perfilData = await getFromFirestore('perfiles', userId);
+      let usuarioData = {};
+      if (!perfilData) {
+        // Solo si no hay perfil, consultamos 'usuarios'
+        usuarioData = (await getFromFirestore('usuarios', userId)) || {};
+        perfilData = {};
+      } else {
+        // Si hay perfil, intentamos completar faltantes con 'usuarios' en segundo plano (no bloquea render)
+        (async () => {
+          try {
+            const u = await getFromFirestore('usuarios', userId);
+            if (u) {
+              // Refrescar caché sin forzar re-render
+              const nombre = perfilData.nombre || u.nombre || '';
+              const apellido = perfilData.apellido || u.apellido || '';
+              const edad = perfilData.edad || u.edad || '';
+              const sexo = perfilData.sexo || u.sexo || '';
+              const descripcion = perfilData.descripcion || '';
+              const foto = perfilData.foto || u.foto || localStorage.getItem('userPhoto') || DEFAULT_AVATAR;
+              const nombreCompleto = [nombre, apellido].filter(Boolean).join(' ').trim();
+              if (nombreCompleto) localStorage.setItem('currentUserName', nombreCompleto);
+              if (edad) localStorage.setItem('perfilEdad', String(edad));
+              if (sexo) localStorage.setItem('perfilSexo', sexo);
+              if (descripcion) localStorage.setItem('perfilDescripcion', descripcion);
+              if (foto) localStorage.setItem('userPhoto', foto);
+            }
+          } catch {}
+        })();
+      }
 
-      const nombre = perfilData.nombre || usuarioData.nombre || '';
-      const apellido = perfilData.apellido || usuarioData.apellido || '';
-      const edad = perfilData.edad || usuarioData.edad || '';
-      const sexo = perfilData.sexo || usuarioData.sexo || '';
-      const descripcion = perfilData.descripcion || '';
-      const foto = perfilData.foto || usuarioData.foto || cacheFoto || DEFAULT_AVATAR;
+  const nombre = perfilData.nombre || usuarioData.nombre || '';
+  const apellido = perfilData.apellido || usuarioData.apellido || '';
+  const edad = perfilData.edad || usuarioData.edad || '';
+  const sexo = perfilData.sexo || usuarioData.sexo || '';
+  const descripcion = perfilData.descripcion || '';
+  const foto = perfilData.foto || usuarioData.foto || cacheFoto || DEFAULT_AVATAR;
 
       // Actualizar UI con datos definitivos
       if (perfilNombre) perfilNombre.textContent = (nombre && apellido) ? `${nombre} ${apellido}` : (nombre || 'Nombre Apellido');
@@ -1049,7 +1729,7 @@ document.addEventListener("DOMContentLoaded", () => {
             ubicacion: evento.ubicacion,
             linkGrupo: evento.linkGrupo,
             maxPersonas: evento.maxPersonas,
-            unidos: evento.unidos,
+            unidos: Array.isArray(evento.participantes) ? evento.participantes.length : Number(evento.unidos || 0),
             organizadorId: evento.organizadorId, // Solo el ID, no datos estáticos
             fechaCreacion: new Date().toISOString()
           };
@@ -1085,16 +1765,14 @@ document.addEventListener("DOMContentLoaded", () => {
         return;
       }
 
-      // Traer favoritos del usuario (BD) y fusionar con fallback local
-      let favoritos = [];
+      // Traer SOLO los favoritos del usuario (consulta indexada)
+      let misFavoritos = [];
       try {
-        favoritos = await getFromFirestore('favoritos');
+        misFavoritos = await getFromFirestoreWhere('favoritos', 'userId', '==', userId);
       } catch (err) {
         console.warn('No se pudieron obtener favoritos desde BD, usando solo locales:', err);
-        favoritos = [];
+        misFavoritos = [];
       }
-
-      let misFavoritos = (favoritos || []).filter(f => f.userId === userId);
 
       // Añadir eventos marcados solo en local
       const setLocal = getLocalFavoritosSet(userId);
@@ -1102,10 +1780,10 @@ document.addEventListener("DOMContentLoaded", () => {
       const idsSoloLocales = Array.from(setLocal).filter(id => !idsBD.has(id));
 
       if (idsSoloLocales.length) {
-        // Intentar traer eventos para completar datos; si falla, se mostrarán menos datos
-        let todosEventos = [];
-        try { todosEventos = await getFromFirestore('eventos'); } catch (e) { todosEventos = []; }
-        const mapa = new Map((todosEventos || []).map(e => [e.id, e]));
+        // Traer solo esos eventos por ID, no toda la colección
+        let eventosLocales = [];
+        try { eventosLocales = await getManyFromFirestore('eventos', idsSoloLocales); } catch (e) { eventosLocales = []; }
+        const mapa = new Map((eventosLocales || []).map(e => [e.id, e]));
         const sinteticos = idsSoloLocales.map(id => {
           const e = mapa.get(id);
           return e ? {
@@ -1130,35 +1808,43 @@ document.addEventListener("DOMContentLoaded", () => {
         // Funciones helper para formatear fecha y hora usando funciones centralizadas
         favoritosLista.innerHTML = '';
         const ahora = new Date();
-        
-        for (const fav of misFavoritos) {
-          // Obtener el evento vigente para datos actualizados
-          const evento = await getFromFirestore('eventos', fav.eventoId);
-          if (!evento) continue;
 
-          // Filtrar eventos que ya pasaron
-          const fechaEvento = construirFechaHora(evento);
-          if (!fechaEvento || ahora >= fechaEvento) continue;
+        // 1) Obtener TODOS los eventos favoritos en paralelo
+        const favIds = Array.from(new Set(misFavoritos.map(f => f.eventoId).filter(Boolean)));
+        const eventosFav = await getManyFromFirestore('eventos', favIds);
+        const mapaEventos = new Map(eventosFav.map(e => [e.id, e]));
 
-          // Obtener datos del organizador dinámicamente desde la BD
+        // 2) Filtrar por eventos futuros y activos
+        const eventosRender = eventosFav.filter(ev => {
+          if (ev.activo !== true) return false;
+          const d = construirFechaHora(ev);
+          if (!d) return true; // si no hay fecha válida, no ocultar por error de dato
+          return ahora < d;
+        });
+
+        // 3) Pre-cargar perfiles de organizadores en paralelo
+        const organizadorIds = Array.from(new Set(eventosRender.map(e => e.organizadorId).filter(Boolean)));
+        const perfiles = await getManyFromFirestore('perfiles', organizadorIds);
+        const mapaPerfiles = new Map(perfiles.map(p => [p.id, p]));
+
+        // 4) Renderizar
+        const favoritosPorIdEvento = new Map(misFavoritos.map(f => [f.eventoId, f]));
+        for (const evento of eventosRender) {
+          const fav = favoritosPorIdEvento.get(evento.id);
+          if (!fav) continue;
+
+          // Datos del organizador
           let nombreOrganizador = 'Desconocido';
           let fotoOrganizador = 'img/PERFIL1.jpg';
-          
-          if (evento.organizadorId) {
-            try {
-              const perfilOrganizador = await getFromFirestore('perfiles', evento.organizadorId);
-              if (perfilOrganizador) {
-                nombreOrganizador = perfilOrganizador.nombre && perfilOrganizador.apellido 
-                  ? `${perfilOrganizador.nombre} ${perfilOrganizador.apellido}`
-                  : perfilOrganizador.nombre || nombreOrganizador;
-                fotoOrganizador = perfilOrganizador.foto || fotoOrganizador;
-              }
-            } catch (e) {
-              console.warn('No se pudo obtener perfil del organizador:', e);
-            }
+          const perfilOrganizador = mapaPerfiles.get(evento.organizadorId);
+          if (perfilOrganizador) {
+            nombreOrganizador = (perfilOrganizador.nombre && perfilOrganizador.apellido)
+              ? `${perfilOrganizador.nombre} ${perfilOrganizador.apellido}`
+              : (perfilOrganizador.nombre || nombreOrganizador);
+            fotoOrganizador = perfilOrganizador.foto || fotoOrganizador;
           }
 
-          const unidos = Number(evento.unidos || 0);
+          const unidos = Array.isArray(evento.participantes) ? evento.participantes.length : (Array.isArray(evento.usuariosUnidos) ? evento.usuariosUnidos.length : Number(evento.unidos || 0));
           const max = Number(evento.maxPersonas || 0);
           const disponibles = Math.max(0, max - unidos);
           const isOrganizadorFav = userId && evento.organizadorId && evento.organizadorId === userId;
@@ -1222,6 +1908,9 @@ document.addEventListener("DOMContentLoaded", () => {
       }
     };
     loadFavoritos();
+    
+    // Exponer loadFavoritos globalmente para recarga desde edición
+    window.loadFavoritosRef = loadFavoritos;
   }
   
   function organizadorLabel(nombre){
@@ -1321,6 +2010,25 @@ document.addEventListener("DOMContentLoaded", () => {
       
       if (usuario && usuario.password === password) {
         localStorage.setItem("currentUserId", userId);
+        // Prefetch de perfil para que la vista cargue más rápido
+        try {
+          const [perfil, usuarioData] = await Promise.all([
+            getFromFirestore('perfiles', userId),
+            getFromFirestore('usuarios', userId)
+          ]);
+          const nombre = (perfil?.nombre) || usuarioData?.nombre || '';
+          const apellido = (perfil?.apellido) || usuarioData?.apellido || '';
+          const edad = (perfil?.edad) || usuarioData?.edad;
+          const sexo = (perfil?.sexo) || usuarioData?.sexo;
+          const descripcion = perfil?.descripcion || '';
+          const foto = (perfil?.foto) || usuarioData?.foto;
+          const nombreCompleto = [nombre, apellido].filter(Boolean).join(' ').trim();
+          if (nombreCompleto) localStorage.setItem('currentUserName', nombreCompleto);
+          if (edad !== undefined) localStorage.setItem('perfilEdad', String(edad));
+          if (sexo) localStorage.setItem('perfilSexo', sexo);
+          if (descripcion) localStorage.setItem('perfilDescripcion', descripcion);
+          if (foto) localStorage.setItem('userPhoto', foto);
+        } catch {}
         mostrarMensajeExito('¡Bienvenido!');
         window.location.href = 'inicio.html';
       } else {
@@ -1498,6 +2206,27 @@ document.addEventListener("DOMContentLoaded", () => {
   const EVENTOS_POR_PAGINA = 10;
   let eventosTotalesInicio = [];
   
+  // 🔄 Escuchar si se editó un evento desde otra vista y recargar
+  const verificarYRecargarSiEditado = () => {
+    const eventoEditadoReciente = localStorage.getItem('eventoEditadoReciente');
+    if (eventoEditadoReciente === '1') {
+      localStorage.removeItem('eventoEditadoReciente');
+      console.log('🔄 Evento editado detectado, recargando inicio...');
+      if (document.querySelector('#eventos-lista')) {
+        loadEventosInicio(paginaActualInicio);
+      }
+      if (document.querySelector('#favoritos-lista')) {
+        const loadFavoritosRef = window.loadFavoritosRef;
+        if (typeof loadFavoritosRef === 'function') {
+          loadFavoritosRef();
+        }
+      }
+    }
+  };
+  
+  // Verificar cada 2 segundos si hubo edición
+  setInterval(verificarYRecargarSiEditado, 2000);
+  
   const loadEventosInicio = async (pagina = 1) => {
     const eventosContainer = $('#eventos-lista');
     if (!eventosContainer) return;
@@ -1572,10 +2301,12 @@ document.addEventListener("DOMContentLoaded", () => {
             }
           }
 
-          const disponibles = evento.maxPersonas - evento.unidos;
+          const unidosCalc = Array.isArray(evento.participantes) ? evento.participantes.length : (Array.isArray(evento.usuariosUnidos) ? evento.usuariosUnidos.length : Number(evento.unidos || 0));
+          const disponibles = Math.max(0, Number(evento.maxPersonas || 0) - unidosCalc);
           const currentUserId = localStorage.getItem('userId') || localStorage.getItem('currentUserId');
           const isOrganizador = currentUserId && evento.organizadorId && evento.organizadorId === currentUserId;
           const yaParticipa = currentUserId && Array.isArray(evento.participantes) && evento.participantes.includes(currentUserId);
+          const isAdmin = window._isAdmin || false;
 
           let botonTexto = 'Unirse';
           let botonDisabled = false;
@@ -1619,7 +2350,7 @@ document.addEventListener("DOMContentLoaded", () => {
               <span><img src="img/ubicacion.png" alt="Ubicación" class="icono-evento" /> ${evento.ubicacion}</span>
               <span>
                 <img src="img/personas.png" alt="Personas" class="icono-evento" />
-                ${evento.unidos}/${evento.maxPersonas} unidos 
+                ${unidosCalc}/${evento.maxPersonas} unidos 
                 <span class="evento-disponibles-texto">(${disponibles} lugares disponibles)</span>
               </span>
             </div>
@@ -1638,6 +2369,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 ${isOrganizador ? `<button class="inicio-btn-organizador" disabled>Organizador</button>` : ''}
                 ${(!isOrganizador && !yaParticipa) ? `<button class="inicio-btn-unirse-nuevo" data-evento-id="${evento.id}">Unirse</button>` : ''}
                 ${(!isOrganizador && yaParticipa) ? `<button class="inicio-btn-salir-nuevo" data-evento-id="${evento.id}">No participar</button>` : ''}
+                ${(isAdmin && !isOrganizador) ? `<button class="inicio-btn-eliminar-admin" data-evento-id="${evento.id}">Eliminar (Admin)</button>` : ''}
               </div>
             </div>
           `;
@@ -1843,7 +2575,9 @@ document.addEventListener("DOMContentLoaded", () => {
             }
           
             // Verificar disponibilidad
-            if (evento.unidos >= evento.maxPersonas) {
+            const actualesUnidos = Array.isArray(evento.participantes) ? evento.participantes.length
+              : (Array.isArray(evento.usuariosUnidos) ? evento.usuariosUnidos.length : Number(evento.unidos || 0));
+            if (actualesUnidos >= Number(evento.maxPersonas || 0)) {
               mostrarMensajeError('Este evento está completo');
               btn.disabled = true;
               btn.textContent = 'Completo';
@@ -1852,13 +2586,14 @@ document.addEventListener("DOMContentLoaded", () => {
             }
 
             // Actualizar evento
-            const participantesActualizados = evento.participantes || [];
+            const participantesActualizados = Array.isArray(evento.participantes) ? [...evento.participantes] : [];
             participantesActualizados.push(userId);
+            const nuevosUnidos = participantesActualizados.length;
           
             const eventoActualizado = {
               ...evento,
-              unidos: evento.unidos + 1,
-              participantes: participantesActualizados
+              participantes: participantesActualizados,
+              unidos: nuevosUnidos
             };
           
             await saveToFirestore('eventos', eventoActualizado, eventoId);
@@ -2039,7 +2774,7 @@ document.addEventListener("DOMContentLoaded", () => {
             return;
           }
           const nuevosParticipantes = evento.participantes.filter(p => p !== userId);
-          const nuevosUnidos = Math.max(0, (evento.unidos || 0) - 1);
+          const nuevosUnidos = nuevosParticipantes.length;
           const actualizado = { ...evento, participantes: nuevosParticipantes, unidos: nuevosUnidos };
           await saveToFirestore('eventos', actualizado, eventoId);
           
@@ -2089,6 +2824,114 @@ document.addEventListener("DOMContentLoaded", () => {
         }
       });
     });
+
+    // Botón eliminar admin
+    $$('.inicio-btn-eliminar-admin').forEach((btn) => {
+      if (btn.dataset.bound) return;
+      btn.dataset.bound = 'true';
+      btn.addEventListener('click', async () => {
+        const eventoId = btn.dataset.eventoId;
+        const isAdmin = window._isAdmin || false;
+        
+        if (!isAdmin) {
+          mostrarMensajeError('No tienes permisos de administrador');
+          return;
+        }
+        // Reusar el mismo modal de confirmación que ven los organizadores
+        const modalConf = document.querySelector('#modal-confirmar-borrado');
+        const btnCancelarB = document.querySelector('#btn-cancelar-borrado');
+        const btnConfirmarB = document.querySelector('#btn-confirmar-borrado');
+
+        // Lógica de borrado encapsulada para reutilizar con modal o confirm nativo
+        const ejecutarBorradoAdmin = async () => {
+          try {
+            btn.disabled = true;
+            btn.textContent = 'Eliminando…';
+
+            const evento = await getFromFirestore('eventos', eventoId);
+            if (!evento) {
+              mostrarMensajeError('Evento no encontrado');
+              btn.disabled = false;
+              btn.textContent = 'Eliminar (Admin)';
+              return;
+            }
+
+            // Notificar a participantes antes de borrar
+            try {
+              const fechaFormateada = formatearFechaArgentina(evento.fecha);
+              const horaFormateada = formatearHoraArgentina(evento.hora);
+              const mensajeCancelacion = `❌ El evento "${evento.titulo}" ha sido CANCELADO por el administrador\n\n` +
+                `📅 Fecha que era: ${fechaFormateada}\n` +
+                `🕐 Hora: ${horaFormateada}\n` +
+                `📍 Lugar: ${evento.lugar}\n\n` +
+                `Este evento infringió las reglas de la plataforma.`;
+
+              await notificarParticipantes(
+                eventoId,
+                TIPO_NOTIF.EVENTO_CANCELADO,
+                mensajeCancelacion,
+                { fecha: evento.fecha, hora: evento.hora, lugar: evento.lugar }
+              );
+              console.log('📧 Notificaciones de cancelación enviadas (Admin)');
+            } catch (notifError) {
+              console.error('Error al enviar notificaciones:', notifError);
+            }
+
+            // Borrar evento y relaciones
+            await deleteFromFirestore('eventos', eventoId);
+            console.log('🛡️ Administrador eliminó evento:', eventoId);
+
+            const todosHistorial = await getFromFirestore('historial');
+            const historialRelacionados = (todosHistorial || []).filter(h => h.eventoId === eventoId);
+            for (const h of historialRelacionados) { if (h.id) await deleteFromFirestore('historial', h.id); }
+
+            const todosFavoritos = await getFromFirestore('favoritos');
+            const favoritosRelacionados = (todosFavoritos || []).filter(f => f.eventoId === eventoId);
+            for (const f of favoritosRelacionados) { if (f.id) await deleteFromFirestore('favoritos', f.id); }
+
+            const todasValoraciones = await getFromFirestore('valoraciones');
+            const valoracionesRelacionadas = (todasValoraciones || []).filter(v => v.eventoId === eventoId);
+            for (const v of valoracionesRelacionadas) { if (v.id) await deleteFromFirestore('valoraciones', v.id); }
+
+            mostrarMensajeExito('Evento eliminado correctamente (Admin)');
+            loadEventosInicio(paginaActualInicio);
+          } catch (err) {
+            console.error('Error al eliminar evento (Admin):', err);
+            mostrarMensajeError('No se pudo eliminar el evento');
+            btn.disabled = false;
+            btn.textContent = 'Eliminar (Admin)';
+          }
+        };
+
+        if (modalConf && btnCancelarB && btnConfirmarB) {
+          // Mostrar modal estilo "recuadro"
+          modalConf.dataset.eventoId = eventoId;
+          modalConf.classList.remove('hidden');
+          modalConf.style.display = 'flex';
+          document.body.classList.add('modal-open');
+
+          const cerrarModal = () => {
+            modalConf.dataset.eventoId = '';
+            modalConf.style.display = 'none';
+            modalConf.classList.add('hidden');
+            document.body.classList.remove('modal-open');
+          };
+
+          // Handlers one-off
+          const onCancel = () => { cerrarModal(); };
+          const onConfirm = async () => { cerrarModal(); await ejecutarBorradoAdmin(); };
+
+          btnCancelarB.addEventListener('click', onCancel, { once: true });
+          btnConfirmarB.addEventListener('click', onConfirm, { once: true });
+          modalConf.addEventListener('click', (e) => { if (e.target === modalConf) cerrarModal(); }, { once: true });
+        } else {
+          // Fallback a confirm nativo si el modal no está disponible
+          if (confirm('¿Estás seguro de que quieres eliminar este evento? Esta acción no se puede deshacer.')) {
+            await ejecutarBorradoAdmin();
+          }
+        }
+      });
+    });
   };
   
   loadEventosInicio();
@@ -2121,9 +2964,10 @@ document.addEventListener("DOMContentLoaded", () => {
             bindFavoritosButtons();
             return;
           }
-          if ((evento.unidos || 0) >= (evento.maxPersonas || 0)) { btn.disabled = true; btn.textContent = 'Completo'; return; }
+          const actualesUnidos = Array.isArray(evento.participantes) ? evento.participantes.length : (Array.isArray(evento.usuariosUnidos) ? evento.usuariosUnidos.length : Number(evento.unidos || 0));
+          if (actualesUnidos >= Number(evento.maxPersonas || 0)) { btn.disabled = true; btn.textContent = 'Completo'; return; }
           const participantes = Array.isArray(evento.participantes) ? [...evento.participantes] : []; participantes.push(userId);
-          const unidos = (evento.unidos || 0) + 1;
+          const unidos = participantes.length;
           await saveToFirestore('eventos', { ...evento, participantes, unidos }, eventoId);
           
           // Actualizar contadores en TODAS las instancias del evento (inicio, favoritos, perfil)
@@ -2164,7 +3008,7 @@ document.addEventListener("DOMContentLoaded", () => {
           if (!evento || !Array.isArray(evento.participantes)) { mostrarMensajeError('Evento no válido'); btn.disabled = false; btn.textContent = 'Salir'; return; }
           if (!evento.participantes.includes(userId)) { mostrarMensajeError('No estabas unido'); btn.disabled = false; btn.textContent = 'Salir'; return; }
           const participantes = evento.participantes.filter(p => p !== userId);
-          const unidos = Math.max(0, (evento.unidos||0) - 1);
+          const unidos = participantes.length;
           await saveToFirestore('eventos', { ...evento, participantes, unidos }, eventoId);
           
           // Actualizar contadores en TODAS las instancias del evento (inicio, favoritos, perfil)
@@ -2378,14 +3222,20 @@ document.addEventListener("DOMContentLoaded", () => {
     const todosEventosIds = itemsFiltrados.map(item => item.eventoId).filter(Boolean);
     const organizadoresIds = [...new Set(itemsFiltrados.map(item => item.organizadorId).filter(Boolean))];
     
-    // Cargar perfiles y valoraciones en paralelo
-    const [todosPerfiles, todasValoraciones, misValoraciones] = await Promise.all([
+    // Cargar eventos actuales, perfiles y valoraciones en paralelo
+    const [todosEventos, todosPerfiles, todasValoraciones, misValoraciones] = await Promise.all([
+      getFromFirestore('eventos'),
       getFromFirestore('perfiles'),
       getFromFirestore('valoraciones'),
       getFromFirestore('valoraciones')
     ]);
     
     // Crear mapas para acceso rápido
+    const eventosMapActual = new Map();
+    (todosEventos || []).forEach(ev => {
+      if (ev.id) eventosMapActual.set(ev.id, ev);
+    });
+
     const perfilesMap = new Map();
     (todosPerfiles || []).forEach(perfil => {
       if (perfil.id) perfilesMap.set(perfil.id, perfil);
@@ -2406,8 +3256,8 @@ document.addEventListener("DOMContentLoaded", () => {
     });
 
     // Renderizar todos los eventos con datos precargados
-    const htmlPartsActivos = activos.map(item => renderHistorialItem(item, false, perfilesMap, valoracionesPorEvento, misValoracionesMap));
-    const htmlPartsPasados = pasados.map(item => renderHistorialItem(item, true, perfilesMap, valoracionesPorEvento, misValoracionesMap));
+  const htmlPartsActivos = activos.map(item => renderHistorialItem(item, false, perfilesMap, valoracionesPorEvento, misValoracionesMap, eventosMapActual));
+  const htmlPartsPasados = pasados.map(item => renderHistorialItem(item, true, perfilesMap, valoracionesPorEvento, misValoracionesMap, eventosMapActual));
     
     const html = htmlPartsActivos.join('') + htmlPartsPasados.join('');
     historialContent.innerHTML = html;
@@ -2418,7 +3268,7 @@ document.addEventListener("DOMContentLoaded", () => {
   };
 
   // Helper para renderizar cada item del historial (OPTIMIZADO - sin consultas async)
-  function renderHistorialItem(item, esPasado, perfilesMap, valoracionesPorEvento, misValoracionesMap) {
+  function renderHistorialItem(item, esPasado, perfilesMap, valoracionesPorEvento, misValoracionesMap, eventosMapActual) {
     const userId = localStorage.getItem('userId') || localStorage.getItem('currentUserId');
     const esCreado = item.tipo === 'creado';
     const esUnido = item.tipo === 'unido';
@@ -2430,10 +3280,21 @@ document.addEventListener("DOMContentLoaded", () => {
     const fechaFormateada = formatearFechaArgentina(item.fecha);
     const horaFormateada = formatearHoraArgentina(item.hora);
     
-    // Calcular disponibles
-    const unidos = Number(item.unidos || 0);
-    const maxPersonas = Number(item.maxPersonas || 0);
+    // Calcular cupos con datos ACTUALES del evento en BD
+    const eventoActual = (eventosMapActual && item.eventoId) ? eventosMapActual.get(item.eventoId) : null;
+    const unidos = eventoActual
+      ? (Array.isArray(eventoActual.participantes) ? eventoActual.participantes.length
+        : (Array.isArray(eventoActual.usuariosUnidos) ? eventoActual.usuariosUnidos.length : Number(eventoActual.unidos || 0)))
+      : Number(item.unidos || 0);
+    const maxPersonas = eventoActual && eventoActual.maxPersonas != null
+      ? Number(eventoActual.maxPersonas)
+      : Number(item.maxPersonas || 0);
     const disponibles = Math.max(0, maxPersonas - unidos);
+    
+    // Preparar campos visibles con datos ACTUALES del evento si existen
+    const tituloMostrar = (eventoActual && eventoActual.titulo) ? eventoActual.titulo : (item.titulo || 'Sin título');
+    const descripcionMostrar = (eventoActual && eventoActual.descripcion) ? eventoActual.descripcion : (item.descripcion || 'Sin descripción');
+    const ubicacionMostrar = (eventoActual && eventoActual.ubicacion) ? eventoActual.ubicacion : (item.ubicacion || 'No especificado');
     
     // Obtener datos del organizador desde el mapa precargado
     let nombreOrganizador = item.organizador || 'Desconocido';
@@ -2450,10 +3311,11 @@ document.addEventListener("DOMContentLoaded", () => {
     // Link de grupo: solo visible si el usuario está participando o es el organizador
     const esOrganizador = esCreado;
     const estaParticipando = esUnido || esCreado;
-    const linkGrupoRow = (item.linkGrupo && String(item.linkGrupo).trim() && estaParticipando)
+    const linkGrupo = (eventoActual && eventoActual.linkGrupo) ? eventoActual.linkGrupo : item.linkGrupo;
+    const linkGrupoRow = (linkGrupo && String(linkGrupo).trim() && estaParticipando)
       ? `<div class="inicio-link-grupo-row">
            <span>Link de grupo:</span>
-           <a href="${item.linkGrupo}" target="_blank" rel="noopener noreferrer">${item.linkGrupo}</a>
+           <a href="${linkGrupo}" target="_blank" rel="noopener noreferrer">${linkGrupo}</a>
          </div>`
       : '';
     
@@ -2473,13 +3335,16 @@ document.addEventListener("DOMContentLoaded", () => {
     // Determinar botones de acción según estado y rol
     let botonesAccion = '';
     
+    // Verificar si es administrador (se puede hacer con una variable global cacheada)
+    const isAdmin = window._isAdmin || false;
+    
     if (!esPasado && esFuturo) {
-      // Evento futuro: organizador puede editar/borrar, participante puede salir
-      if (esCreado) {
+      // Evento futuro: organizador puede editar/borrar, participante puede salir, admin puede eliminar cualquier evento
+      if (esCreado || isAdmin) {
         botonesAccion = `
           <div class="historial-botones-verticales">
-            <button class="btn-editar-evento" data-id="${item.eventoId}">Editar</button>
-            <button class="btn-borrar-evento" data-id="${item.eventoId}">Borrar</button>
+            ${esCreado || isAdmin ? `<button class="btn-editar-evento" data-id="${item.eventoId}">Editar</button>` : ''}
+            <button class="btn-borrar-evento" data-id="${item.eventoId}">${isAdmin && !esCreado ? 'Eliminar (Admin)' : 'Borrar'}</button>
           </div>
         `;
       } else if (esUnido) {
@@ -2526,21 +3391,21 @@ document.addEventListener("DOMContentLoaded", () => {
     return `
       <div class="inicio-card-evento${esPasado ? ' historial-pasado' : ''}" data-evento-id="${item.eventoId}">
         <div class="inicio-titulo-row">
-          <h2 class="inicio-titulo-evento">${item.titulo || 'Sin título'}</h2>
-          ${esCreado && !esPasado && esFuturo ? `
+          <h2 class="inicio-titulo-evento">${tituloMostrar}</h2>
+          ${(esCreado || isAdmin) && !esPasado && esFuturo ? `
             <div class="historial-botones-horizontales">
-              <button class="btn-editar-evento" data-id="${item.eventoId}">Editar</button>
-              <button class="btn-borrar-evento" data-id="${item.eventoId}">Borrar</button>
+              ${esCreado || isAdmin ? `<button class="btn-editar-evento" data-id="${item.eventoId}">Editar</button>` : ''}
+              <button class="btn-borrar-evento" data-id="${item.eventoId}">${isAdmin && !esCreado ? 'Eliminar (Admin)' : 'Borrar'}</button>
             </div>
           ` : ''}
           ${esUnido && !esPasado ? '<span class="evento-participando-badge">Participando</span>' : ''}
         </div>
-        <p class="inicio-descripcion-evento">${item.descripcion || 'Sin descripción'}</p>
+        <p class="inicio-descripcion-evento">${descripcionMostrar}</p>
         ${linkGrupoRow}
         <div class="inicio-detalles-evento">
           <span><img src="img/calendario.png" alt="Fecha" class="icono-evento" /> ${fechaFormateada}</span>
           <span><img src="img/reloj-circular.png" alt="Hora" class="icono-evento" /> ${horaFormateada}</span>
-          <span><img src="img/ubicacion.png" alt="Ubicación" class="icono-evento" /> ${item.ubicacion || 'No especificado'}</span>
+          <span><img src="img/ubicacion.png" alt="Ubicación" class="icono-evento" /> ${ubicacionMostrar}</span>
           <span>
             <img src="img/personas.png" alt="Personas" class="icono-evento" />
             ${unidos}/${maxPersonas} unidos 
@@ -2604,7 +3469,7 @@ document.addEventListener("DOMContentLoaded", () => {
           if (!evento || !Array.isArray(evento.participantes)) return;
           
           const nuevosParticipantes = evento.participantes.filter(pid => pid !== userId);
-          const nuevosUnidos = Math.max(0, (evento.unidos || 0) - 1);
+          const nuevosUnidos = nuevosParticipantes.length;
           
           await saveToFirestore('eventos', { 
             ...evento, 
@@ -2913,6 +3778,7 @@ document.addEventListener("DOMContentLoaded", () => {
             // Validación de permisos
             const eventoABorrar = await getFromFirestore('eventos', id);
             const userIdLocal = localStorage.getItem('userId') || localStorage.getItem('currentUserId');
+            const isAdmin = window._isAdmin || false;
             
             if (!eventoABorrar) {
               mostrarMensajeError('Evento no encontrado');
@@ -2920,13 +3786,41 @@ document.addEventListener("DOMContentLoaded", () => {
               return;
             }
             
-            if (eventoABorrar.organizadorId !== userIdLocal) {
+            // Permitir borrado si es el organizador O si es administrador
+            if (eventoABorrar.organizadorId !== userIdLocal && !isAdmin) {
               mostrarMensajeError('⛔ Solo el organizador puede borrar este evento');
               cerrarModalBorrar();
               return;
             }
             
+            // Mensaje especial si es admin borrando evento de otro usuario
+            if (isAdmin && eventoABorrar.organizadorId !== userIdLocal) {
+              console.log('🛡️ Administrador borrando evento de otro usuario:', id);
+            }
+            
             console.log('🗑️ Borrando evento:', id);
+            
+            // NOTIFICAR A PARTICIPANTES ANTES DE BORRAR
+            try {
+              const fechaFormateada = formatearFechaArgentina(eventoABorrar.fecha);
+              const horaFormateada = formatearHoraArgentina(eventoABorrar.hora);
+              const mensajeCancelacion = `❌ El evento "${eventoABorrar.titulo}" ha sido CANCELADO\n\n` +
+                `📅 Fecha que era: ${fechaFormateada}\n` +
+                `🕐 Hora: ${horaFormateada}\n` +
+                `📍 Lugar: ${eventoABorrar.lugar}\n\n` +
+                `Lo sentimos por las molestias.`;
+              
+              await notificarParticipantes(
+                id,
+                TIPO_NOTIF.EVENTO_CANCELADO,
+                mensajeCancelacion,
+                { fecha: eventoABorrar.fecha, hora: eventoABorrar.hora, lugar: eventoABorrar.lugar }
+              );
+              console.log('📧 Notificaciones de cancelación enviadas');
+            } catch (notifError) {
+              console.error('Error al enviar notificaciones de cancelación:', notifError);
+              // Continuar con el borrado aunque falle la notificación
+            }
             
             // 1) Borrar evento de la colección eventos
             await deleteFromFirestore('eventos', id);
@@ -3088,25 +3982,55 @@ document.addEventListener("DOMContentLoaded", () => {
             // Obtener evento actual y mantener campos que no se editan
             const eventoActual = await getFromFirestore('eventos', id);
             
+            if (!eventoActual) {
+              mostrarMensajeError('No se pudo encontrar el evento');
+              return;
+            }
+            
             // Obtener datos del formulario
             const linkGrupo = editLinkGrupoInput?.value?.trim() || '';
+            const nuevoMaxPersonas = parseInt(inputMax.value, 10) || 1;
             
+            // Validar que maxPersonas no sea menor que los participantes actuales
+            const participantesActuales = Array.isArray(eventoActual.participantes) ? eventoActual.participantes.length : 0;
+            if (nuevoMaxPersonas < participantesActuales) {
+              mostrarMensajeError(`No podés reducir el máximo a ${nuevoMaxPersonas} porque ya hay ${participantesActuales} participantes unidos`);
+              return;
+            }
+            
+            // Crear payload manteniendo campos críticos que no se editan
             const payload = {
-              ...eventoActual,
+              ...eventoActual, // Mantener todos los campos existentes
               titulo: inputTitulo.value.trim(),
               descripcion: inputDesc.value.trim(),
               fecha: fechaEdit,
               hora: horaEdit,
               ubicacion: inputUbicacion.value.trim(),
               linkGrupo: linkGrupo,
-              maxPersonas: parseInt(inputMax.value, 10) || 1,
-              fechaHoraEvento: fh.toISOString()
+              maxPersonas: nuevoMaxPersonas,
+              fechaHoraEvento: fh.toISOString(),
+              // Asegurar que estos campos se mantengan:
+              activo: eventoActual.activo !== undefined ? eventoActual.activo : true,
+              organizadorId: eventoActual.organizadorId,
+              participantes: eventoActual.participantes || [],
+              unidos: Array.isArray(eventoActual.participantes) ? eventoActual.participantes.length : Number(eventoActual.unidos || 0)
             };
             
             console.log('💾 Guardando evento actualizado:', id);
-            console.log('📝 Datos a guardar:', payload);
+            console.log('📝 Datos a guardar:', {
+              titulo: payload.titulo,
+              descripcion: payload.descripcion?.substring(0, 50) + '...',
+              fecha: payload.fecha,
+              hora: payload.hora,
+              ubicacion: payload.ubicacion,
+              linkGrupo: payload.linkGrupo ? 'presente' : 'no',
+              maxPersonas: payload.maxPersonas,
+              unidos: payload.unidos,
+              participantes: payload.participantes?.length || 0,
+              activo: payload.activo
+            });
             await saveToFirestore('eventos', payload, id);
-            console.log('✅ Evento guardado en BD');
+            console.log('✅ Evento guardado en BD con merge: true');
             
             // Actualizar también las entradas del historial de todos los usuarios
             const todosHistorial = await getFromFirestore('historial');
@@ -3144,6 +4068,35 @@ document.addEventListener("DOMContentLoaded", () => {
             }
             
             console.log('🎉 Todas las actualizaciones completadas');
+            
+            // NOTIFICAR A PARTICIPANTES SOBRE LA EDICIÓN
+            try {
+              const fechaFormateada = formatearFechaArgentina(payload.fecha);
+              const horaFormateada = formatearHoraArgentina(payload.hora);
+              const mensajeEdicion = `✏️ El evento "${payload.titulo}" ha sido MODIFICADO\n\n` +
+                `📅 Nueva fecha: ${fechaFormateada}\n` +
+                `🕐 Nueva hora: ${horaFormateada}\n` +
+                `📍 Lugar: ${payload.ubicacion}\n` +
+                `📝 Descripción: ${payload.descripcion}\n\n` +
+                `Por favor, verificá los cambios.`;
+              
+              await notificarParticipantes(
+                id,
+                TIPO_NOTIF.EVENTO_EDITADO,
+                mensajeEdicion,
+                { 
+                  fecha: payload.fecha, 
+                  hora: payload.hora, 
+                  lugar: payload.ubicacion,
+                  descripcion: payload.descripcion
+                }
+              );
+              console.log('📧 Notificaciones de edición enviadas');
+            } catch (notifError) {
+              console.error('Error al enviar notificaciones de edición:', notifError);
+              // Continuar aunque falle la notificación
+            }
+            
             mostrarMensajeExito('Evento actualizado para todos los participantes');
             cerrarModal();
             
@@ -3159,6 +4112,13 @@ document.addEventListener("DOMContentLoaded", () => {
             console.log('🎨 Renderizando historial tipo:', tipo);
             renderHistorial(cacheHistorial, tipo);
             console.log('✅ Renderizado completado');
+            
+            // 🔄 Actualizar tarjetas de este evento en TODAS las vistas (inicio, favoritos)
+            // si el usuario tiene esas páginas abiertas (sin recargar)
+            actualizarTarjetasEventoEnTodasLasVistas(id, payload);
+            
+            // Marcar que se editó un evento para que otras vistas lo detecten
+            localStorage.setItem('eventoEditadoReciente', '1');
           } catch (err) {
             console.error('❌ Error al actualizar:', err);
             mostrarMensajeError('No se pudo actualizar el evento');
@@ -3262,7 +4222,7 @@ document.addEventListener("DOMContentLoaded", () => {
               descripcion: eventoCompleto.descripcion || historialLimpio.descripcion || '',
               linkGrupo: eventoCompleto.linkGrupo || historialLimpio.linkGrupo || '',
               maxPersonas: eventoCompleto.maxPersonas || historialLimpio.maxPersonas || 1,
-              unidos: eventoCompleto.unidos || historialLimpio.unidos || 0
+              unidos: (Array.isArray(eventoCompleto.participantes) ? eventoCompleto.participantes.length : (eventoCompleto.unidos || historialLimpio.unidos || 0))
             };
             
             // Eliminar cualquier campo que sea undefined
@@ -3300,6 +4260,15 @@ document.addEventListener("DOMContentLoaded", () => {
   // Ejecutar reparación automática si estamos en perfil.html
   if (historialContent) {
     repararHistorialSinOrganizadorId();
+  }
+
+  // ==============================
+  // INICIAR SISTEMA DE NOTIFICACIONES
+  // ==============================
+  const userId = localStorage.getItem('userId') || localStorage.getItem('currentUserId');
+  if (userId) {
+    console.log('🔔 Iniciando sistema de notificaciones...');
+    iniciarSistemaNotificaciones();
   }
 
 }); // Fin DOMContentLoaded
