@@ -402,7 +402,7 @@ input:not([type="date"]):not([type="time"]), textarea, select, button {
 .modal {
   position: fixed;
   inset: 0;
-  display: none; /* se muestra con display:flex desde JS */
+  display: none; /* oculto por defecto */
   align-items: center;
   justify-content: center;
   background: rgba(0, 0, 0, 0.5); /* Más oscuro */
@@ -411,6 +411,11 @@ input:not([type="date"]):not([type="time"]), textarea, select, button {
   z-index: 3000; /* por encima de header/nav y toasts */
   padding: 20px; /* Más padding para móviles */
   animation: fadeIn 0.2s ease-out;
+}
+
+/* Modal visible cuando no tiene la clase hidden */
+.modal:not(.hidden) {
+  display: flex;
 }
 
 @keyframes fadeIn {
@@ -5112,16 +5117,619 @@ body[data-protected="true"] {
   box-shadow: 0 4px 12px rgba(0, 57, 24, 0.3);
 }
 
-/* Responsive */
+/* ============================================
+   RESPONSIVE DESIGN - MOBILE FIRST
+   ============================================ */
+
+/* Tablets y pantallas medianas (max-width: 768px) */
 @media (max-width: 768px) {
-  .form-crear-usuario {
+  /* Header */
+  .header-principal {
+    height: 100px;
+  }
+  
+  .header-logo-centro {
+    width: 200px;
+    height: 200px;
+  }
+  
+  /* Navegación */
+  .nav-bar {
+    padding: 0.6em 1em;
+  }
+  
+  .nav-center {
+    gap: 0.8em;
+  }
+  
+  .nav-center a {
+    font-size: 0.9em;
+    padding: 0.4em 0.8em;
+  }
+  
+  /* Main container */
+  .main-container {
+    padding: 8px 12px;
+  }
+  
+  /* Títulos */
+  .inicio-titulo,
+  .crear-evento-titulo-nueva,
+  .code-title,
+  .form-title {
+    font-size: 1.5rem;
+  }
+  
+  .subtitulo,
+  .inicio-subtitulo {
+    font-size: 0.9rem;
+    padding: 0 10px;
+  }
+  
+  /* Buscador */
+  .buscador-eventos {
+    max-width: 95%;
+    margin: 0.5em auto 1em auto;
+  }
+  
+  .buscador-input-wrapper input {
+    font-size: 0.95em;
+    padding: 0.5em 2.5em 0.5em 1em;
+  }
+  
+  /* Cards de eventos */
+  .inicio-card-evento,
+  .evento-card,
+  .favoritos-card-evento {
+    padding: 1em 1.2em;
+    margin: 0.8em auto;
+    max-width: 98%;
+  }
+  
+  .inicio-titulo-evento,
+  .favoritos-titulo-evento {
+    font-size: 1.2em;
+  }
+  
+  .inicio-descripcion-evento,
+  .favoritos-descripcion-evento {
+    font-size: 1em;
+  }
+  
+  .inicio-detalles-evento,
+  .favoritos-detalles-evento {
+    flex-direction: column;
+    gap: 0.5em;
+    align-items: flex-start;
+  }
+  
+  .inicio-detalles-evento span,
+  .favoritos-detalles-evento span {
+    font-size: 0.95em;
+  }
+  
+  /* Organizador */
+  .inicio-organizador,
+  .favoritos-organizador {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.5em;
+  }
+  
+  .inicio-organizador-foto,
+  .favoritos-organizador-foto {
+    width: 40px;
+    height: 40px;
+  }
+  
+  /* Botones de acción */
+  .inicio-bottom-row,
+  .favoritos-bottom-row {
+    flex-direction: column;
+    gap: 0.8em;
+  }
+  
+  .inicio-actions,
+  .favoritos-actions {
+    width: 100%;
+    justify-content: space-between;
+    flex-wrap: wrap;
+  }
+  
+  .inicio-btn-unirse,
+  .favoritos-btn-unirse,
+  .inicio-btn-salir-nuevo,
+  .inicio-btn-eliminar-admin,
+  .favoritos-btn-salir {
+    font-size: 0.9em;
+    padding: 0.4em 1em;
+  }
+  
+  /* Modales */
+  .modal {
+    padding: 15px;
+  }
+  
+  .modal .modal-content {
+    max-width: 95%;
+    padding: 18px 20px;
+    max-height: 85vh;
+  }
+  
+  .modal .modal-content h3 {
+    font-size: 1.3em;
+  }
+  
+  .modal .modal-content input,
+  .modal .modal-content textarea,
+  .modal .modal-content select {
+    font-size: 14px;
+    padding: 9px 11px;
+  }
+  
+  .modal .modal-actions {
+    flex-direction: column;
+    gap: 10px;
+  }
+  
+  .modal .modal-actions button {
+    width: 100%;
+    max-width: 100%;
+  }
+  
+  /* Perfil */
+  #perfil-container {
+    padding: 1.5em 1em;
+  }
+  
+  .perfil-header {
+    flex-direction: column;
+    text-align: center;
+    gap: 1em;
+  }
+  
+  .perfil-foto-container {
+    margin: 0 auto;
+  }
+  
+  .perfil-info {
+    align-items: center;
+  }
+  
+  /* Historial */
+  .historial-tabs {
+    gap: 0.5em;
+  }
+  
+  .historial-tab {
+    font-size: 0.9em;
+    padding: 0.5em 1em;
+  }
+  
+  .historial-evento-card {
+    padding: 1em;
+  }
+  
+  .chip-actions {
+    flex-direction: column;
+    gap: 0.5em;
+  }
+  
+  /* Formularios */
+  .form-crear-usuario,
+  .code-box-ancho,
+  .code-box-ancho1,
+  .login-card,
+  .verificacion-box {
     padding: 1.2em 1.6em;
     max-width: 95%;
   }
   
-  .form-crear-usuario .perfil-row-doble {
+  .form-crear-usuario .perfil-row-doble,
+  .perfil-row-doble {
     flex-direction: column;
     gap: 0.6em;
+  }
+  
+  .modal .perfil-fila-sexo-edad {
+    grid-template-columns: 1fr;
+    gap: 10px;
+  }
+  
+  /* Footer */
+  .footer-tfi {
+    font-size: 0.85rem;
+    padding: 0.5em 1em;
+  }
+}
+
+/* Móviles pequeños (max-width: 480px) */
+@media (max-width: 480px) {
+  /* Header */
+  .header-principal {
+    height: 80px;
+  }
+  
+  .header-logo-centro {
+    width: 160px;
+    height: 160px;
+  }
+  
+  /* Navegación */
+  .nav-bar {
+    padding: 0.5em 0.5em;
+  }
+  
+  .nav-center {
+    gap: 0.3em;
+  }
+  
+  .nav-center a {
+    font-size: 0.75em;
+    padding: 0.3em 0.5em;
+  }
+  
+  .nav-menu-btn-inline {
+    font-size: 1.3rem;
+    padding: 0 4px;
+  }
+  
+  /* Main container */
+  .main-container {
+    padding: 6px 8px;
+  }
+  
+  /* Títulos */
+  .inicio-titulo,
+  .crear-evento-titulo-nueva,
+  .code-title,
+  .form-title {
+    font-size: 1.3rem;
+  }
+  
+  .subtitulo,
+  .inicio-subtitulo {
+    font-size: 0.85rem;
+    padding: 0 8px;
+  }
+  
+  /* Buscador */
+  .buscador-input-wrapper input {
+    font-size: 0.9em;
+    padding: 0.45em 2.3em 0.45em 0.9em;
+  }
+  
+  .icono-buscar {
+    width: 20px;
+    height: 20px;
+    right: 12px;
+  }
+  
+  /* Cards de eventos */
+  .inicio-card-evento,
+  .evento-card,
+  .favoritos-card-evento {
+    padding: 0.9em 1em;
+    margin: 0.6em auto;
+  }
+  
+  .inicio-titulo-evento,
+  .favoritos-titulo-evento {
+    font-size: 1.1em;
+  }
+  
+  .inicio-descripcion-evento,
+  .favoritos-descripcion-evento {
+    font-size: 0.95em;
+  }
+  
+  .inicio-detalles-evento span,
+  .favoritos-detalles-evento span {
+    font-size: 0.9em;
+  }
+  
+  .icono-evento {
+    width: 16px;
+    height: 16px;
+  }
+  
+  .evento-disponibles-texto {
+    font-size: 0.85em;
+  }
+  
+  /* Organizador */
+  .inicio-organizador-foto,
+  .favoritos-organizador-foto {
+    width: 36px;
+    height: 36px;
+  }
+  
+  .inicio-organizador-nombre,
+  .favoritos-organizador-nombre {
+    font-size: 0.9em;
+  }
+  
+  /* Botones */
+  .inicio-btn-favorito-nuevo,
+  .inicio-btn-compartir-nuevo {
+    padding: 0.3em 0.6em;
+  }
+  
+  .inicio-btn-unirse,
+  .favoritos-btn-unirse,
+  .inicio-btn-salir-nuevo,
+  .inicio-btn-eliminar-admin,
+  .favoritos-btn-salir,
+  .inicio-btn-organizador {
+    font-size: 0.85em;
+    padding: 0.35em 0.9em;
+  }
+  
+  .evento-participando-badge {
+    font-size: 0.8em;
+    padding: 0.15em 0.7em;
+  }
+  
+  /* Modales */
+  .modal {
+    padding: 10px;
+  }
+  
+  .modal .modal-content {
+    padding: 16px 18px;
+    border-radius: 10px;
+    max-height: 80vh;
+  }
+  
+  .modal .modal-content h3 {
+    font-size: 1.2em;
+    margin-bottom: 12px;
+  }
+  
+  .modal .modal-content label {
+    font-size: 0.85em;
+    margin: 8px 0 3px 0;
+  }
+  
+  .modal .modal-content input,
+  .modal .modal-content textarea,
+  .modal .modal-content select {
+    font-size: 13px;
+    padding: 8px 10px;
+    height: 36px;
+  }
+  
+  .modal .modal-content textarea {
+    min-height: 70px;
+  }
+  
+  .modal .modal-actions button {
+    font-size: 14px;
+    height: 44px;
+    padding: 0 16px;
+  }
+  
+  /* Modal de confirmación de borrado */
+  .modal-borrar-icono svg {
+    width: 48px;
+    height: 48px;
+  }
+  
+  .modal-borrar-titulo {
+    font-size: 1.1em;
+  }
+  
+  .modal-borrar-texto {
+    font-size: 0.9em;
+  }
+  
+  /* Perfil */
+  #perfil-container {
+    padding: 1em 0.8em;
+  }
+  
+  .perfil-foto {
+    width: 100px;
+    height: 100px;
+  }
+  
+  .perfil-nombre {
+    font-size: 1.3em;
+  }
+  
+  .perfil-edad,
+  .perfil-sexo {
+    font-size: 0.9em;
+  }
+  
+  .perfil-descripcion {
+    font-size: 0.9em;
+  }
+  
+  .perfil-botones-foto {
+    flex-direction: column;
+    gap: 6px;
+  }
+  
+  /* Historial */
+  .historial-tabs {
+    gap: 0.3em;
+  }
+  
+  .historial-tab {
+    font-size: 0.85em;
+    padding: 0.45em 0.8em;
+  }
+  
+  .historial-evento-card {
+    padding: 0.8em;
+  }
+  
+  .historial-evento-titulo {
+    font-size: 1em;
+  }
+  
+  .historial-evento-info {
+    font-size: 0.85em;
+  }
+  
+  /* Formularios */
+  .form-crear-usuario,
+  .code-box-ancho,
+  .code-box-ancho1,
+  .login-card,
+  .code-container-blanco {
+    padding: 1em 1.2em;
+    max-width: 98%;
+  }
+  
+  .form-title,
+  .code-title {
+    font-size: 1.2em;
+  }
+  
+  .form-desc,
+  .code-msg {
+    font-size: 0.95em;
+  }
+  
+  form label,
+  .modal .modal-content label {
+    font-size: 0.9em;
+  }
+  
+  form input,
+  form textarea,
+  form select {
+    font-size: 0.95em;
+    padding: 9px 12px;
+  }
+  
+  .btn-verificar,
+  .btn-verde,
+  .login-btn-verde,
+  .crear-evento-btn-nueva {
+    font-size: 0.95em;
+    padding: 11px 0;
+  }
+  
+  /* Tab selector */
+  .tab-selector {
+    margin-bottom: 6px;
+  }
+  
+  .tab-btn {
+    font-size: 0.9em;
+    padding: 0.7em 0;
+  }
+  
+  /* Carrusel */
+  .carrusel-full {
+    width: 98%;
+    padding: 10px;
+    border-radius: 10px;
+  }
+  
+  .carrusel-imagenes {
+    height: 200px;
+  }
+  
+  .carrusel-btn {
+    width: 32px;
+    height: 32px;
+    font-size: 1.1rem;
+  }
+  
+  #carrusel-dots {
+    gap: 6px;
+    margin-top: 10px;
+  }
+  
+  .carrusel-dot {
+    width: 8px;
+    height: 8px;
+  }
+  
+  .btn-unirme {
+    font-size: 0.85rem;
+    padding: 0 16px;
+  }
+  
+  /* Footer */
+  .footer-tfi {
+    font-size: 0.7rem;
+    padding: 0.4em 0.8em;
+  }
+  
+  /* Participantes */
+  .participantes-lista {
+    gap: 0.4em;
+  }
+  
+  .participante-item {
+    padding: 0.6em;
+  }
+  
+  .participante-avatar {
+    width: 32px;
+    height: 32px;
+  }
+  
+  .participante-nombre {
+    font-size: 0.9em;
+  }
+  
+  /* Links de grupo */
+  .inicio-link-grupo-row,
+  .favoritos-link-grupo-row {
+    font-size: 0.9em;
+  }
+  
+  .inicio-link-grupo-row a,
+  .favoritos-link-grupo-row a {
+    font-size: 0.9em;
+    word-break: break-all;
+  }
+}
+
+/* Móviles muy pequeños (max-width: 360px) */
+@media (max-width: 360px) {
+  .nav-center a {
+    font-size: 0.7em;
+    padding: 0.25em 0.4em;
+  }
+  
+  .inicio-titulo,
+  .crear-evento-titulo-nueva {
+    font-size: 1.1rem;
+  }
+  
+  .inicio-card-evento,
+  .favoritos-card-evento {
+    padding: 0.8em 0.9em;
+  }
+  
+  .inicio-titulo-evento,
+  .favoritos-titulo-evento {
+    font-size: 1em;
+  }
+  
+  .inicio-bottom-row,
+  .favoritos-bottom-row {
+    gap: 0.6em;
+  }
+  
+  .modal .modal-content {
+    padding: 14px 16px;
+  }
+  
+  .modal .modal-content h3 {
+    font-size: 1.1em;
+  }
+  
+  .form-crear-usuario,
+  .code-container-blanco {
+    padding: 0.9em 1em;
   }
 }
 
