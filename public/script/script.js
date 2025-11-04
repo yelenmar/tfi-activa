@@ -911,6 +911,12 @@ const actualizarTarjetasEventoEnTodasLasVistas = (eventoId, eventoActualizado) =
 
 // Registrar en fase de captura y burbuja, y soportar dispositivos táctiles
 document.addEventListener("DOMContentLoaded", async () => {
+  // Inicializar modales ocultos
+  const modales = document.querySelectorAll('.modal');
+  modales.forEach(modal => {
+    modal.style.display = 'none';
+  });
+
   // 0) Inicializar estado de administrador
   try {
     window._isAdmin = await esAdministrador();
@@ -2907,12 +2913,10 @@ document.addEventListener("DOMContentLoaded", async () => {
           // Mostrar modal estilo "recuadro"
           modalConf.dataset.eventoId = eventoId;
           modalConf.classList.remove('hidden');
-          modalConf.style.display = 'flex';
           document.body.classList.add('modal-open');
 
           const cerrarModal = () => {
             modalConf.dataset.eventoId = '';
-            modalConf.style.display = 'none';
             modalConf.classList.add('hidden');
             document.body.classList.remove('modal-open');
           };
