@@ -343,12 +343,26 @@ input:not([type="date"]):not([type="time"]), textarea, select, button {
   appearance: none !important;
 }
 
+/* Acciones del formulario de perfil (Cancelar/Guardar) */
+.perfil-form-actions {
+  display: flex;
+  flex-direction: row;
+  justify-content: center;
+  gap: 16px;
+  margin-top: 20px;
+  width: 100%;
+}
+
+/* ============================================
+   ESTILOS DE MODALES (EDITAR Y BORRAR)
+   ============================================ */
+
 .modal .modal-actions {
   display: flex;
   flex-direction: row;
   justify-content: center;
-  gap: 12px; /* Reducido de 24px */
-  margin-top: 20px; /* Más compacto */
+  gap: 12px;
+  margin-top: 20px;
   width: 100%;
 }
 
@@ -388,16 +402,6 @@ input:not([type="date"]):not([type="time"]), textarea, select, button {
   box-shadow: 0 4px 12px rgba(0, 57, 24, 0.3);
 }
 
-/* Acciones del formulario de perfil (Cancelar/Guardar) */
-.perfil-form-actions {
-  display: flex;
-  flex-direction: row;
-  justify-content: center;
-  gap: 16px;
-  margin-top: 20px;
-  width: 100%;
-}
-
 /* Overlay base para modales: centrado, por encima y con backdrop */
 .modal {
   position: fixed;
@@ -405,22 +409,34 @@ input:not([type="date"]):not([type="time"]), textarea, select, button {
   display: none; /* se muestra con display:flex desde JS */
   align-items: center;
   justify-content: center;
-  background: rgba(0, 0, 0, 0.45);
-  -webkit-backdrop-filter: blur(1px);
-  backdrop-filter: blur(1px);
-  z-index: 3000; /* por encima de header/nav y toasts */
-  padding: 16px; /* margen interno para pantallas pequeñas */
+  background: rgba(0, 0, 0, 0.5);
+  -webkit-backdrop-filter: blur(3px);
+  backdrop-filter: blur(3px);
+  z-index: 3000;
+  padding: 20px;
+  animation: fadeIn 0.2s ease-out;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
 }
 
 .modal .modal-content {
   width: 100%;
-  max-width: 560px;
+  max-width: 480px;
   background: #fff;
-  border-radius: 16px;
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.25);
+  border-radius: 12px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
   border: 1px solid #e0e0e0;
-  padding: 18px 18px 16px 18px;
+  padding: 20px 24px;
   position: relative;
+  max-height: 90vh;
+  overflow-y: auto;
 }
 
 /* Evitar scroll del body cuando un modal está abierto */
@@ -429,52 +445,59 @@ body.modal-open {
 }
 
 .modal .modal-content h3 {
-  margin: 0 0 10px 0;
+  margin: 0 0 16px 0;
   color: var(--green-dark);
-  text-align: left;
+  text-align: center;
+  font-size: 1.4em;
+  font-weight: 700;
 }
 
 .modal .modal-content label {
   display: block;
-  margin: 4px 0 2px 0;
+  margin: 10px 0 4px 0;
   font-weight: 600;
   color: var(--green-mid);
   text-align: left;
+  font-size: 0.9em;
 }
 
 .modal .modal-content input[type="text"],
 .modal .modal-content input[type="date"],
 .modal .modal-content input[type="time"],
 .modal .modal-content input[type="number"],
+.modal .modal-content input[type="url"],
 .modal .modal-content textarea {
   width: 100%;
-  border: 1px solid #d1d1e0;
-  border-radius: 10px;
-  padding: 8px 12px;
-  font-size: 15px;
+  border: 1.5px solid #d1d1e0;
+  border-radius: 8px;
+  padding: 10px 12px;
+  font-size: 14px;
   outline: none;
-  background: #f9fafc;
-  margin-bottom: 6px;
-  transition: box-shadow 0.2s;
+  background: #fafbfc;
+  margin-bottom: 4px;
+  transition: all 0.2s ease;
+  font-family: inherit;
 }
 
 /* Inputs del modal con altura uniforme */
 .modal .modal-content input[type="text"],
 .modal .modal-content input[type="date"],
 .modal .modal-content input[type="time"],
-.modal .modal-content input[type="number"] {
-  height: 44px;
+.modal .modal-content input[type="number"],
+.modal .modal-content input[type="url"] {
+  height: 40px;
   line-height: 1.2;
 }
 
 .modal .modal-content textarea {
-  min-height: 110px;
+  min-height: 80px;
+  resize: vertical;
 }
 
 .modal .modal-content input:focus,
 .modal .modal-content textarea:focus {
   border-color: var(--green-mid);
-  box-shadow: 0 0 0 2px #c2f2e3;
+  box-shadow: 0 0 0 3px rgba(46, 125, 50, 0.1);
   background: #fff;
 }
 
@@ -482,9 +505,10 @@ body.modal-open {
 .modal .perfil-fila-sexo-edad {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: var(--space-md);
+  gap: 12px;
   align-items: start;
   width: 100%;
+  margin-top: 4px;
 }
 .modal .perfil-fila-sexo-edad > div {
   display: flex;
@@ -493,6 +517,7 @@ body.modal-open {
 @media (max-width: 640px) {
   .modal .perfil-fila-sexo-edad {
     grid-template-columns: 1fr;
+    gap: 8px;
   }
 }
 
@@ -1085,8 +1110,7 @@ body {
   outline: none;
 }
 
-form label,
-.modal .modal-content label {
+form label {
   display: block;
   margin: var(--space-sm) 0 var(--space-xxs) 0;
   font-weight: 600;
@@ -1097,9 +1121,7 @@ form label,
   padding-left: 0;
 }
 form input,
-form textarea,
-.modal .modal-content input,
-.modal .modal-content textarea {
+form textarea {
   width: 100%;
   max-width: 100%;
   min-width: 220px;
@@ -1130,7 +1152,6 @@ form textarea {
 .crear-evento-btn-nueva,
 .inicio-btn-verde,
 .btn-unirse-evento,
-.modal-actions button,
 .btn-eliminar-evento {
   height: var(--btn-height);
   border-radius: var(--radius-md);
@@ -1312,7 +1333,6 @@ form {
 .form-title,
 .perfil-eventos-titulo,
 .verificacion-title,
-.modal .modal-content h3,
 .inicio-titulo,
 .crear-evento-titulo-nueva {
   color: var(--green-mid);
@@ -4482,21 +4502,6 @@ label[for="ubicacion"].crear-evento-label-nueva {
   }
 }
 
-.modal-actions button {
-  width: 180px;
-  height: 50px;
-  font-size: 1.12em;
-  border-radius: 14px;
-  padding: 0;
-  transition: background 0.18s, box-shadow 0.18s;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.07);
-  text-align: center;
-  flex: none;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
 /* Foto de participante en la lista */
 .participante-foto {
   width: 100%;
@@ -4732,8 +4737,9 @@ label[for="ubicacion"].crear-evento-label-nueva {
     justify-content: center;
   }
 }
+
 /* ============================================
-   MODAL DE CONFIRMACI�N DE BORRADO - MEJORADO
+   MODAL DE CONFIRMACIÓN DE BORRADO - MEJORADO
    ============================================ */
 .modal-confirmar-borrado .modal-borrar-content {
   max-width: 480px;
@@ -4826,7 +4832,6 @@ label[for="ubicacion"].crear-evento-label-nueva {
 }
 
 .btn-confirmar-borrado {
-  /* Color y hover como "No participar", dimensiones como "Unirme" */
   background: #c1121f;
   color: #fff;
   padding: 0.55em 1.4em;
@@ -4883,7 +4888,6 @@ label[for="ubicacion"].crear-evento-label-nueva {
 
 /* Modal: botones */
 #modal-editar-evento .btn-secondary {
-  /* Color de "No participar" y medidas de "Unirme" */
   background: #c1121f !important;
   color: #fff !important;
   border: none !important;
@@ -4900,8 +4904,7 @@ label[for="ubicacion"].crear-evento-label-nueva {
 }
 
 #modal-editar-evento .btn-primary {
-  /* Igual que "Unirme" (verde) */
-  background: var(--green-mid) !important; /* #003918 */
+  background: var(--green-mid) !important;
   color: #fff !important;
   border: none !important;
   padding: 0.55em 1.4em !important;
@@ -4923,17 +4926,17 @@ label[for="ubicacion"].crear-evento-label-nueva {
 
 /* Modal editar evento: compresión extra para menos alto */
 #modal-editar-evento .modal-content {
-  max-width: 440px !important; /* un poco más angosto */
-  padding: 14px 16px !important; /* menos padding interno */
+  max-width: 440px !important;
+  padding: 14px 16px !important;
 }
 
 #modal-editar-evento h3 {
   font-size: 1.3rem !important;
-  margin: 4px 0 10px 0 !important; /* título más compacto */
+  margin: 4px 0 10px 0 !important;
 }
 
 #modal-editar-evento label {
-  margin: 6px 0 2px 0 !important; /* menos espacio vertical */
+  margin: 6px 0 2px 0 !important;
   font-size: 0.95rem !important;
   line-height: 1.1 !important;
 }
@@ -4943,28 +4946,27 @@ label[for="ubicacion"].crear-evento-label-nueva {
 #modal-editar-evento input[type="time"],
 #modal-editar-evento input[type="number"],
 #modal-editar-evento input[type="url"] {
-  height: 36px !important; /* menos alto */
-  padding: 8px 10px !important; /* padding compacto */
+  height: 36px !important;
+  padding: 8px 10px !important;
   margin-bottom: 4px !important;
 }
 
 #modal-editar-evento textarea {
-  min-height: 64px !important; /* textarea más baja */
+  min-height: 64px !important;
   padding: 8px 10px !important;
 }
 
 #modal-editar-evento .perfil-fila-sexo-edad {
-  gap: 8px !important; /* menos espacio entre columnas */
+  gap: 8px !important;
   margin-top: 0 !important;
 }
 
 #modal-editar-evento .modal-actions {
-  margin-top: 12px !important; /* menos espacio con los botones */
+  margin-top: 12px !important;
   gap: 10px !important;
 }
 
 #modal-editar-evento .modal-actions button {
-  /* Más pequeños que los de inicio */
   max-width: none !important;
   padding: 0.55em 1.4em !important;
   font-size: 0.95em !important;
@@ -5219,38 +5221,6 @@ body[data-protected="true"] {
     padding: 0.4em 1em;
   }
   
-  /* Modales */
-  .modal {
-    padding: 15px;
-  }
-  
-  .modal .modal-content {
-    max-width: 95%;
-    padding: 18px 20px;
-    max-height: 85vh;
-  }
-  
-  .modal .modal-content h3 {
-    font-size: 1.3em;
-  }
-  
-  .modal .modal-content input,
-  .modal .modal-content textarea,
-  .modal .modal-content select {
-    font-size: 14px;
-    padding: 9px 11px;
-  }
-  
-  .modal .modal-actions {
-    flex-direction: column;
-    gap: 10px;
-  }
-  
-  .modal .modal-actions button {
-    width: 100%;
-    max-width: 100%;
-  }
-  
   /* Perfil */
   #perfil-container {
     padding: 1.5em 1em;
@@ -5303,11 +5273,6 @@ body[data-protected="true"] {
   .perfil-row-doble {
     flex-direction: column;
     gap: 0.6em;
-  }
-  
-  .modal .perfil-fila-sexo-edad {
-    grid-template-columns: 1fr;
-    gap: 10px;
   }
   
   /* Footer */
@@ -5444,59 +5409,6 @@ body[data-protected="true"] {
     padding: 0.15em 0.7em;
   }
   
-  /* Modales */
-  .modal {
-    padding: 10px;
-  }
-  
-  .modal .modal-content {
-    padding: 16px 18px;
-    border-radius: 10px;
-    max-height: 80vh;
-  }
-  
-  .modal .modal-content h3 {
-    font-size: 1.2em;
-    margin-bottom: 12px;
-  }
-  
-  .modal .modal-content label {
-    font-size: 0.85em;
-    margin: 8px 0 3px 0;
-  }
-  
-  .modal .modal-content input,
-  .modal .modal-content textarea,
-  .modal .modal-content select {
-    font-size: 13px;
-    padding: 8px 10px;
-    height: 36px;
-  }
-  
-  .modal .modal-content textarea {
-    min-height: 70px;
-  }
-  
-  .modal .modal-actions button {
-    font-size: 14px;
-    height: 44px;
-    padding: 0 16px;
-  }
-  
-  /* Modal de confirmación de borrado */
-  .modal-borrar-icono svg {
-    width: 48px;
-    height: 48px;
-  }
-  
-  .modal-borrar-titulo {
-    font-size: 1.1em;
-  }
-  
-  .modal-borrar-texto {
-    font-size: 0.9em;
-  }
-  
   /* Perfil */
   #perfil-container {
     padding: 1em 0.8em;
@@ -5567,8 +5479,7 @@ body[data-protected="true"] {
     font-size: 0.95em;
   }
   
-  form label,
-  .modal .modal-content label {
+  form label {
     font-size: 0.9em;
   }
   
@@ -5691,14 +5602,6 @@ body[data-protected="true"] {
   .inicio-bottom-row,
   .favoritos-bottom-row {
     gap: 0.6em;
-  }
-  
-  .modal .modal-content {
-    padding: 14px 16px;
-  }
-  
-  .modal .modal-content h3 {
-    font-size: 1.1em;
   }
   
   .form-crear-usuario,
