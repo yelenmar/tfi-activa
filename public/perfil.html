@@ -104,60 +104,61 @@
         </div>
       </section>
 
-      <!-- Modal edición de evento -->
-      <div id="modal-editar-evento" class="modal">
-        <div class="modal-content">
-          <h3>Editar evento</h3>
-          <form id="form-editar-evento" autocomplete="off">
-            <input type="hidden" id="edit-evento-id">
-            <label for="edit-titulo">Título</label>
-            <input id="edit-titulo" type="text" required>
-            <label for="edit-descripcion">Descripción</label>
-            <textarea id="edit-descripcion" rows="3" required></textarea>
-            <div class="perfil-fila-sexo-edad">
-              <div>
-                <label for="edit-fecha">Fecha</label>
-                <input id="edit-fecha" type="date" required>
-              </div>
-              <div>
-                <label for="edit-hora">Hora</label>
-                <input id="edit-hora" type="time" required>
-              </div>
-            </div>
-            <label for="edit-ubicacion">Ubicación</label>
-            <input id="edit-ubicacion" type="text" required placeholder="Ej: Parque Central, Calle Principal 123">
-            <label for="edit-link-grupo">Link de grupo (opcional)</label>
-            <input id="edit-link-grupo" type="url" placeholder="Ej: https://t.me/mi-grupo" pattern="https?://.+">
-            <label for="edit-maxPersonas">Cupo máximo</label>
-            <input id="edit-maxPersonas" type="text" inputmode="numeric" pattern="[0-9]+" placeholder="Ej: 10" required>
-            <div class="modal-actions">
-              <button type="button" id="btn-cancelar-edicion" class="btn-base btn-secondary">Cancelar</button>
-              <button type="submit" class="btn-base btn-primary">Guardar</button>
-            </div>
-          </form>
-        </div>
-      </div>
-
-      <!-- Modal confirmación de borrado -->
-      <div id="modal-confirmar-borrado" class="modal modal-confirmar-borrado">
-        <div class="modal-content modal-borrar-content">
-          <div class="modal-borrar-icono">
-            <svg width="64" height="64" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-              <circle cx="12" cy="12" r="10" stroke="#dc3545" stroke-width="2"/>
-              <path d="M12 7V13" stroke="#dc3545" stroke-width="2" stroke-linecap="round"/>
-              <circle cx="12" cy="16.5" r="1" fill="#dc3545"/>
-            </svg>
-          </div>
-          <h3 class="modal-borrar-titulo">Eliminar evento</h3>
-          <p class="modal-borrar-texto">¿Seguro que querés borrar este evento? Esta acción es permanente.</p>
-          <div class="modal-actions modal-borrar-actions">
-            <button type="button" id="btn-cancelar-borrado" class="btn-base btn-cancelar-borrado">Cancelar</button>
-            <button type="button" id="btn-confirmar-borrado" class="btn-base btn-confirmar-borrado">Borrar definitivamente</button>
-          </div>
-        </div>
-      </div>
     </div>
   </main>
+
+  <!-- Modal edición de evento (movido fuera del contenedor para evitar que position: fixed quede relativo) -->
+  <div id="modal-editar-evento" class="modal hidden">
+    <div class="modal-content">
+      <h3>Editar evento</h3>
+      <form id="form-editar-evento" autocomplete="off">
+        <input type="hidden" id="edit-evento-id">
+        <label for="edit-titulo">Título</label>
+        <input id="edit-titulo" type="text" required>
+        <label for="edit-descripcion">Descripción</label>
+        <textarea id="edit-descripcion" rows="3" required></textarea>
+        <div class="perfil-fila-sexo-edad">
+          <div>
+            <label for="edit-fecha">Fecha</label>
+            <input id="edit-fecha" type="date" required>
+          </div>
+          <div>
+            <label for="edit-hora">Hora</label>
+            <input id="edit-hora" type="time" required>
+          </div>
+        </div>
+        <label for="edit-ubicacion">Ubicación</label>
+        <input id="edit-ubicacion" type="text" required placeholder="Ej: Parque Central, Calle Principal 123">
+        <label for="edit-link-grupo">Link de grupo (opcional)</label>
+        <input id="edit-link-grupo" type="url" placeholder="Ej: https://t.me/mi-grupo" pattern="https?://.+">
+        <label for="edit-maxPersonas">Cupo máximo</label>
+        <input id="edit-maxPersonas" type="text" inputmode="numeric" pattern="[0-9]+" placeholder="Ej: 10" required>
+        <div class="modal-actions">
+          <button type="button" id="btn-cancelar-edicion" class="btn-base btn-secondary">Cancelar</button>
+          <button type="submit" class="btn-base btn-primary">Guardar</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Modal confirmación de borrado (movido fuera del contenedor para evitar problemas con position: fixed) -->
+  <div id="modal-confirmar-borrado" class="modal modal-confirmar-borrado hidden">
+    <div class="modal-content modal-borrar-content">
+      <div class="modal-borrar-icono">
+        <svg width="64" height="64" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <circle cx="12" cy="12" r="10" stroke="#dc3545" stroke-width="2"/>
+          <path d="M12 7V13" stroke="#dc3545" stroke-width="2" stroke-linecap="round"/>
+          <circle cx="12" cy="16.5" r="1" fill="#dc3545"/>
+        </svg>
+      </div>
+      <h3 class="modal-borrar-titulo">Eliminar evento</h3>
+      <p class="modal-borrar-texto">¿Seguro que querés borrar este evento? Esta acción es permanente.</p>
+      <div class="modal-actions modal-borrar-actions">
+        <button type="button" id="btn-cancelar-borrado" class="btn-base btn-cancelar-borrado">Cancelar</button>
+        <button type="button" id="btn-confirmar-borrado" class="btn-base btn-confirmar-borrado">Borrar definitivamente</button>
+      </div>
+    </div>
+  </div>
   <footer class="footer-tfi">
     TFI INGENIERIA EN SISTEMAS DE INFORMACION 2025. AUTORES : MAROSECK YELENKA Y RUIZ DIAZ LUCIANO
   </footer>

@@ -911,12 +911,8 @@ const actualizarTarjetasEventoEnTodasLasVistas = (eventoId, eventoActualizado) =
 
 // Registrar en fase de captura y burbuja, y soportar dispositivos táctiles
 document.addEventListener("DOMContentLoaded", async () => {
-  // Inicializar modales ocultos
-  const modales = document.querySelectorAll('.modal');
-  modales.forEach(modal => {
-    modal.style.display = 'none';
-  });
-
+  // Los modales ya tienen class="hidden" en el HTML
+  
   // 0) Inicializar estado de administrador
   try {
     window._isAdmin = await esAdministrador();
@@ -3453,9 +3449,8 @@ document.addEventListener("DOMContentLoaded", async () => {
         const modalConf = document.querySelector('#modal-confirmar-borrado');
         if (!modalConf) return;
         modalConf.dataset.eventoId = eventoId;
-        // Mostrar modal: quitar clase hidden y usar display:flex
+        // Mostrar modal: solo quitar clase hidden
         modalConf.classList.remove('hidden');
-        modalConf.style.display = 'flex';
         console.log('🧨 Abriendo modal de confirmación de borrado para evento:', eventoId);
         document.body.classList.add('modal-open');
       });
@@ -3691,16 +3686,31 @@ document.addEventListener("DOMContentLoaded", async () => {
         inputTitulo.value = ev.titulo || '';
         inputDesc.value = ev.descripcion || '';
         
-        // Normalizar fecha (yyyy-mm-dd)
-        const fechaISO = ev.fecha ? new Date(ev.fecha) : null;
-        if (fechaISO && !isNaN(fechaISO)) {
-          const y = fechaISO.getFullYear();
-          const m = String(fechaISO.getMonth()+1).padStart(2,'0');
-          const d = String(fechaISO.getDate()).padStart(2,'0');
-          inputFecha.value = `${y}-${m}-${d}`;
-        } else {
-          inputFecha.value = (ev.fecha && /^\d{4}-\d{2}-\d{2}$/.test(ev.fecha)) ? ev.fecha : '';
+        // Fecha para input (evitar desfase por parseo UTC de 'YYYY-MM-DD')
+        // Prioridad: si ya está en formato 'YYYY-MM-DD', usarla tal cual.
+        // Si viene como 'DD/MM/YYYY' o 'DD-MM-YYYY', convertir a 'YYYY-MM-DD' sin usar Date.
+        // Como último recurso, si existe fechaHoraEvento ISO, derivar fecha local.
+        let fechaInput = '';
+        if (ev.fecha && /^\d{4}-\d{2}-\d{2}$/.test(ev.fecha)) {
+          fechaInput = ev.fecha;
+        } else if (ev.fecha && /^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})$/.test(ev.fecha)) {
+          const mm = ev.fecha.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})$/);
+          if (mm) {
+            const dd = String(mm[1]).padStart(2,'0');
+            const mo = String(mm[2]).padStart(2,'0');
+            const yy = mm[3];
+            fechaInput = `${yy}-${mo}-${dd}`;
+          }
+        } else if (ev.fechaHoraEvento) {
+          const d = new Date(ev.fechaHoraEvento);
+          if (!isNaN(d)) {
+            const y = d.getFullYear();
+            const mo = String(d.getMonth()+1).padStart(2,'0');
+            const da = String(d.getDate()).padStart(2,'0');
+            fechaInput = `${y}-${mo}-${da}`;
+          }
         }
+        inputFecha.value = fechaInput;
 
         // Normalizar hora (HH:MM)
         if (ev.hora) {
@@ -3717,7 +3727,6 @@ document.addEventListener("DOMContentLoaded", async () => {
         // Abrir modal
         console.log('✅ Abriendo modal de edición'); // Debug
         modal.classList.remove('hidden');
-        modal.style.display = 'flex';
         document.body.classList.add('modal-open');
       });
     });
@@ -3753,7 +3762,6 @@ document.addEventListener("DOMContentLoaded", async () => {
       const cerrarModalBorrar = () => {
         if (modalConf) {
           modalConf.dataset.eventoId = '';
-          modalConf.style.display = 'none';
           modalConf.classList.add('hidden');
           document.body.classList.remove('modal-open');
         }
@@ -3907,7 +3915,6 @@ document.addEventListener("DOMContentLoaded", async () => {
       const cerrarModal = () => {
         if (!modal) return;
         modal.classList.add('hidden');
-        modal.style.display = 'none';
         document.body.classList.remove('modal-open');
       };
 
@@ -3929,13 +3936,10 @@ document.addEventListener("DOMContentLoaded", async () => {
         document.body.dataset.boundEscClose = 'true';
         document.addEventListener('keydown', (e) => {
           if (e.key === 'Escape') {
-            const abiertos = document.querySelectorAll('.modal');
+            const abiertos = document.querySelectorAll('.modal:not(.hidden)');
             abiertos.forEach(m => {
-              if (m.style.display !== 'none') {
-                m.classList.add('hidden');
-                m.style.display = 'none';
-                document.body.classList.remove('modal-open');
-              }
+              m.classList.add('hidden');
+              document.body.classList.remove('modal-open');
             });
           }
         });

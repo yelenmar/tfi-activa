@@ -353,239 +353,322 @@ input:not([type="date"]):not([type="time"]), textarea, select, button {
   width: 100%;
 }
 
-/* ============================================
-   ESTILOS DE MODALES (EDITAR Y BORRAR)
-   ============================================ */
+/* ========================================
+   MODALES - DISEÑO LIMPIO
+   ======================================== */
 
-.modal .modal-actions {
+/* Overlay del modal */
+.modal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  /* Fondo borroso y oscurecido en toda la pantalla */
+  background: rgba(0, 0, 0, 0.45);
+  backdrop-filter: blur(3px);
+  -webkit-backdrop-filter: blur(3px);
+  z-index: 10000;
   display: flex;
-  flex-direction: row;
+  align-items: center;
   justify-content: center;
-  gap: 12px;
-  margin-top: 20px;
+  padding: 16px;
+  overflow-y: auto;
+}
+
+.modal.hidden {
+  display: none;
+}
+
+/* Contenedor del modal */
+.modal-content {
+  background: white;
+  border-radius: 16px;
+  padding: 28px;
+  max-width: 520px;
   width: 100%;
+  max-height: 90vh;
+  overflow-y: auto;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+  position: relative;
 }
 
-.modal .modal-actions button {
-  flex: 1;
-  max-width: 180px;
-  padding: 11px 20px;
-  font-size: 15px;
+/* Scrollbar personalizada para el modal */
+.modal-content::-webkit-scrollbar {
+  width: 8px;
+}
+
+.modal-content::-webkit-scrollbar-track {
+  background: #f1f1f1;
+  border-radius: 10px;
+}
+
+.modal-content::-webkit-scrollbar-thumb {
+  background: #003918;
+  border-radius: 10px;
+}
+
+.modal-content::-webkit-scrollbar-thumb:hover {
+  background: #00501f;
+}
+
+/* Título del modal */
+.modal h3 {
+  font-size: 22px;
+  font-weight: 700;
+  color: #003918;
+  margin: 0 0 24px 0;
+  text-align: center;
+}
+
+/* Labels */
+.modal label {
+  display: block;
+  font-size: 14px;
   font-weight: 600;
-  border-radius: 8px;
-  border: none;
-  cursor: pointer;
-  transition: all 0.2s ease;
+  color: #003918;
+  margin: 14px 0 6px 0;
 }
 
-.modal .modal-actions .btn-secondary {
-  background: #fff;
+/* Inputs y textarea */
+.modal input[type="text"],
+.modal input[type="date"],
+.modal input[type="time"],
+.modal input[type="number"],
+.modal input[type="url"],
+.modal textarea {
+  width: 100%;
+  padding: 12px;
+  border: 2px solid #e0e0e0;
+  border-radius: 10px;
+  font-size: 15px;
+  font-family: inherit;
+  transition: all 0.2s;
+  background: #fafafa;
+}
+
+.modal input:focus,
+.modal textarea:focus {
+  outline: none;
+  border-color: #003918;
+  background: white;
+}
+
+.modal textarea {
+  min-height: 100px;
+  resize: vertical;
+}
+
+/* Fila de fecha y hora */
+.modal .perfil-fila-sexo-edad {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+
+/* Botones del modal */
+.modal-actions {
+  display: flex;
+  gap: 12px;
+  margin-top: 28px;
+  justify-content: center; /* centrar botones */
+}
+
+.modal-actions button {
+  flex: 0 0 auto; /* no estirar a todo el ancho */
+  padding: 14px 20px;
+  border: none;
+  border-radius: 10px;
+  font-size: 16px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+/* ===== Estilo compacto exclusivo del modal de edición ===== */
+#modal-editar-evento .modal-content {
+  padding: 20px;            /* menos padding */
+  max-width: 540px;         /* un poquito más ancho para que entre todo */
+}
+
+#modal-editar-evento h3 {
+  font-size: 20px;          /* título más compacto */
+  margin-bottom: 14px;
+}
+
+#modal-editar-evento label {
+  font-size: 13.5px;
+  font-weight: 600;
+  margin: 8px 0 4px 0;      /* menos interlineado arriba/abajo */
+}
+
+#modal-editar-evento input[type="text"],
+#modal-editar-evento input[type="date"],
+#modal-editar-evento input[type="time"],
+#modal-editar-evento input[type="number"],
+#modal-editar-evento input[type="url"],
+#modal-editar-evento textarea {
+  padding: 10px;            /* inputs más compactos */
+  font-size: 14px;
+  border-radius: 8px;
+}
+
+#modal-editar-evento textarea {
+  min-height: 80px;         /* textarea más bajo para evitar scroll general */
+}
+
+#modal-editar-evento .perfil-fila-sexo-edad {
+  gap: 12px;                /* menos espacio entre fecha y hora */
+}
+
+#modal-editar-evento .modal-actions {
+  margin-top: 18px;         /* menos margen superior */
+  gap: 10px;
+}
+
+#modal-editar-evento .modal-actions button {
+  min-width: 140px;         /* tamaño consistente */
+  padding: 12px 18px;       /* un toque más compacto */
+}
+
+@media (max-width: 640px) {
+  #modal-editar-evento .modal-content {
+    padding: 16px;          /* aún más compacto en móvil */
+  }
+  #modal-editar-evento .modal-actions {
+    flex-direction: column; /* mantener botones en columna en móvil */
+  }
+  #modal-editar-evento .modal-actions button {
+    width: 100%;
+  }
+}
+
+.modal .btn-primary {
+  background: #003918;
+  color: white;
+}
+
+.modal .btn-primary:hover {
+  background: #00501f;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 57, 24, 0.3);
+}
+
+.modal .btn-secondary {
+  background: white;
   color: #dc3545;
   border: 2px solid #dc3545;
 }
 
-.modal .modal-actions .btn-secondary:hover {
-  background: #fff5f5;
-  transform: translateY(-1px);
-  box-shadow: 0 2px 8px rgba(220, 53, 69, 0.2);
+.modal .btn-secondary:hover {
+  background: #dc3545;
+  color: white;
 }
 
-.modal .modal-actions .btn-primary {
-  background: #003918;
-  color: #fff;
-  border: 2px solid #003918;
+/* Modal de confirmación de borrado */
+.modal-confirmar-borrado .modal-borrar-content {
+  text-align: center;
+  padding: 36px 28px;
 }
 
-.modal .modal-actions .btn-primary:hover {
-  background: #00501f;
-  transform: translateY(-1px);
-  box-shadow: 0 4px 12px rgba(0, 57, 24, 0.3);
+.modal-borrar-titulo {
+  font-size: 24px;
+  font-weight: 700;
+  color: #2c3e50;
+  margin: 20px 0 12px 0;
 }
 
-/* Overlay base para modales: centrado, por encima y con backdrop */
-.modal {
-  position: fixed;
-  inset: 0;
-  display: none; /* se muestra con display:flex desde JS */
+.modal-borrar-texto {
+  font-size: 16px;
+  color: #666;
+  line-height: 1.5;
+  margin-bottom: 28px;
+}
+
+.modal-borrar-icono {
+  display: inline-flex;
   align-items: center;
   justify-content: center;
-  background: rgba(0, 0, 0, 0.5);
-  -webkit-backdrop-filter: blur(3px);
-  backdrop-filter: blur(3px);
-  z-index: 3000;
-  padding: 20px;
-  animation: fadeIn 0.2s ease-out;
+  width: 80px;
+  height: 80px;
+  background: linear-gradient(135deg, #ffe5e5, #ffd0d0);
+  border-radius: 50%;
+  margin: 0 auto;
 }
 
-@keyframes fadeIn {
-  from {
-    opacity: 0;
-  }
-  to {
-    opacity: 1;
-  }
+.modal-borrar-icono svg {
+  width: 48px;
+  height: 48px;
 }
 
-.modal .modal-content {
-  width: 100%;
-  max-width: 480px;
-  background: #fff;
-  border-radius: 12px;
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
-  border: 1px solid #e0e0e0;
-  padding: 20px 24px;
-  position: relative;
-  max-height: 90vh;
-  overflow-y: auto;
+.modal-borrar-actions {
+  display: flex;
+  gap: 12px;
+  justify-content: center;
 }
 
-/* Evitar scroll del body cuando un modal está abierto */
+.btn-cancelar-borrado,
+.btn-confirmar-borrado {
+  padding: 14px 28px;
+  border: none;
+  border-radius: 10px;
+  font-size: 16px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s;
+  min-width: 140px;
+}
+
+.btn-cancelar-borrado {
+  background: #f0f0f0;
+  color: #333;
+}
+
+.btn-cancelar-borrado:hover {
+  background: #e0e0e0;
+}
+
+.btn-confirmar-borrado {
+  background: #dc3545;
+  color: white;
+}
+
+.btn-confirmar-borrado:hover {
+  background: #c82333;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(220, 53, 69, 0.3);
+}
+
+/* Prevenir scroll del body cuando modal está abierto */
 body.modal-open {
   overflow: hidden;
 }
 
-.modal .modal-content h3 {
-  margin: 0 0 16px 0;
-  color: var(--green-dark);
-  text-align: center;
-  font-size: 1.4em;
-  font-weight: 700;
-}
-
-.modal .modal-content label {
-  display: block;
-  margin: 10px 0 4px 0;
-  font-weight: 600;
-  color: var(--green-mid);
-  text-align: left;
-  font-size: 0.9em;
-}
-
-.modal .modal-content input[type="text"],
-.modal .modal-content input[type="date"],
-.modal .modal-content input[type="time"],
-.modal .modal-content input[type="number"],
-.modal .modal-content input[type="url"],
-.modal .modal-content textarea {
-  width: 100%;
-  border: 1.5px solid #d1d1e0;
-  border-radius: 8px;
-  padding: 10px 12px;
-  font-size: 14px;
-  outline: none;
-  background: #fafbfc;
-  margin-bottom: 4px;
-  transition: all 0.2s ease;
-  font-family: inherit;
-}
-
-/* Inputs del modal con altura uniforme */
-.modal .modal-content input[type="text"],
-.modal .modal-content input[type="date"],
-.modal .modal-content input[type="time"],
-.modal .modal-content input[type="number"],
-.modal .modal-content input[type="url"] {
-  height: 40px;
-  line-height: 1.2;
-}
-
-.modal .modal-content textarea {
-  min-height: 80px;
-  resize: vertical;
-}
-
-.modal .modal-content input:focus,
-.modal .modal-content textarea:focus {
-  border-color: var(--green-mid);
-  box-shadow: 0 0 0 3px rgba(46, 125, 50, 0.1);
-  background: #fff;
-}
-
-/* Fila doble Fecha/Hora en modal: dos columnas iguales */
-.modal .perfil-fila-sexo-edad {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 12px;
-  align-items: start;
-  width: 100%;
-  margin-top: 4px;
-}
-.modal .perfil-fila-sexo-edad > div {
-  display: flex;
-  flex-direction: column;
-}
+/* Responsive */
 @media (max-width: 640px) {
+  .modal {
+    padding: 16px;
+  }
+  
+  .modal-content {
+    padding: 24px 20px;
+  }
+  
   .modal .perfil-fila-sexo-edad {
     grid-template-columns: 1fr;
-    gap: 8px;
+    gap: 0;
   }
-}
-
-/* El chip de Borrar en historial mantiene tamaño pequeño */
-.chip-actions .btn-eliminar-evento {
-  height: auto;
-  padding: 8px 12px;
-  font-size: 12px;
-  border-radius: 10px;
-  box-shadow: none;
-}
-
-/* --- Modal compacto: reducir interlineados y espacios verticales --- */
-.modal .modal-content h3 {
-  margin-bottom: var(--space-sm);
-}
-
-/* Todos los labels del modal alineados con los inputs */
-.modal .modal-content label {
-  margin: var(--space-xs) 0 2px 0;
-  line-height: 1.1;
-  display: block;
-  text-align: left;
-  padding-left: 0;
-  font-weight: 500;
-}
-
-/* Todos los inputs y textareas del modal */
-.modal .modal-content input,
-.modal .modal-content textarea,
-.modal .modal-content select {
-  margin: 0 0 var(--space-xs) 0;
-  padding: 8px 12px;
-}
-
-.modal .perfil-fila-sexo-edad {
-  gap: var(--space-sm);
-}
-
-.modal .modal-actions {
-  margin-top: var(--space-md);
-}
-
-/* Específico para el formulario de editar evento */
-#form-editar-evento label {
-  margin: var(--space-xs) 0 2px 0 !important;
-  line-height: 1.1;
-  display: block;
-  text-align: left;
-  padding-left: 4px;
-  font-weight: 500;
-  align-content: flex-start;
-}
-
-#form-editar-evento input,
-#form-editar-evento textarea {
-  margin: 0 0 var(--space-xs) 0;
-  padding: 8px 12px;
-}
-
-/* Asegurar que los labels en filas dobles también se alineen */
-.modal .perfil-fila-sexo-edad label,
-.modal .perfil-fila-sexo-edad input {
-  margin: 0 0 2px 0;
-}
-
-.modal .perfil-fila-sexo-edad input {
-  margin-bottom: var(--space-xs);
+  
+  .modal-actions,
+  .modal-borrar-actions {
+    flex-direction: column;
+  }
+  
+  .modal-actions button,
+  .btn-cancelar-borrado,
+  .btn-confirmar-borrado {
+    width: 100%;
+  }
 }
 
 /* Reducir interlineado en formularios generales */
@@ -4736,241 +4819,6 @@ label[for="ubicacion"].crear-evento-label-nueva {
   .favoritos-actions {
     justify-content: center;
   }
-}
-
-/* ============================================
-   MODAL DE CONFIRMACIÓN DE BORRADO - MEJORADO
-   ============================================ */
-.modal-confirmar-borrado .modal-borrar-content {
-  max-width: 480px;
-  text-align: center;
-  padding: 32px 28px 28px;
-  border-radius: 20px;
-  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
-  animation: modalSlideIn 0.3s ease-out;
-}
-
-@keyframes modalSlideIn {
-  from {
-    opacity: 0;
-    transform: translateY(-20px) scale(0.95);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0) scale(1);
-  }
-}
-
-.modal-borrar-icono {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 80px;
-  height: 80px;
-  background: linear-gradient(135deg, #ffe8e8 0%, #ffdddd 100%);
-  border-radius: 50%;
-  margin: 0 auto 20px;
-  animation: iconoPulse 2s ease-in-out infinite;
-}
-
-@keyframes iconoPulse {
-  0%, 100% {
-    transform: scale(1);
-  }
-  50% {
-    transform: scale(1.05);
-  }
-}
-
-.modal-borrar-icono svg {
-  width: 64px;
-  height: 64px;
-}
-
-.modal-borrar-titulo {
-  font-size: 24px;
-  font-weight: 700;
-  color: #2c3e50;
-  margin: 0 0 12px 0;
-  text-align: center;
-}
-
-.modal-borrar-texto {
-  font-size: 16px;
-  color: #6c757d;
-  line-height: 1.6;
-  margin: 0 0 28px 0;
-  text-align: center;
-}
-
-.modal-borrar-actions {
-  display: flex;
-  gap: 12px;
-  justify-content: center;
-  flex-wrap: wrap;
-}
-
-.btn-cancelar-borrado,
-.btn-confirmar-borrado {
-  padding: 0.55em 1.4em;
-  font-size: 0.95em;
-  font-weight: 700;
-  border-radius: 8px;
-  border: none;
-  cursor: pointer;
-  transition: background 0.18s ease;
-  min-width: 140px;
-}
-
-.btn-cancelar-borrado {
-  background: #e9ecef;
-  color: #333;
-}
-
-.btn-cancelar-borrado:hover {
-  background: #ced4da;
-}
-
-.btn-confirmar-borrado {
-  background: #c1121f;
-  color: #fff;
-  padding: 0.55em 1.4em;
-  border-radius: 8px;
-}
-
-.btn-confirmar-borrado:hover {
-  background: #6a040f;
-}
-
-@media (max-width: 500px) {
-  .modal-borrar-actions {
-    flex-direction: column;
-  }
-  
-  .btn-cancelar-borrado,
-  .btn-confirmar-borrado {
-    width: 100%;
-    min-width: unset;
-  }
-}
-
-/* Modal edición */
-
-/* Modal: labels fecha/hora */
-#modal-editar-evento .perfil-fila-sexo-edad label {
-  background: transparent !important;
-  box-shadow: none !important;
-  padding: 0 0 4px 0 !important;
-  color: #333 !important;
-  font-weight: 500 !important;
-}
-
-/* Modal: inputs fecha/hora */
-#modal-editar-evento input[type="date"],
-#modal-editar-evento input[type="time"] {
-  background: #ffffff !important;
-  border: 1px solid #d1d1e0 !important;
-  color: #333 !important;
-}
-
-#modal-editar-evento input[type="date"]:focus,
-#modal-editar-evento input[type="time"]:focus {
-  background: #ffffff !important;
-  border-color: var(--violet) !important;
-  box-shadow: 0 0 0 2px rgba(120, 80, 180, 0.15) !important;
-}
-
-/* Modal: título */
-#modal-editar-evento h3 {
-  text-align: center !important;
-  margin-bottom: var(--space-md) !important;
-}
-
-/* Modal: botones */
-#modal-editar-evento .btn-secondary {
-  background: #c1121f !important;
-  color: #fff !important;
-  border: none !important;
-  padding: 0.55em 1.4em !important;
-  font-weight: 700 !important;
-  font-size: 0.95em !important;
-  border-radius: 8px !important;
-  box-shadow: none !important;
-  transition: background 0.18s ease !important;
-}
-
-#modal-editar-evento .btn-secondary:hover {
-  background: #6a040f !important;
-}
-
-#modal-editar-evento .btn-primary {
-  background: var(--green-mid) !important;
-  color: #fff !important;
-  border: none !important;
-  padding: 0.55em 1.4em !important;
-  font-weight: 700 !important;
-  font-size: 0.95em !important;
-  border-radius: 8px !important;
-  box-shadow: none !important;
-  transition: background 0.18s ease !important;
-}
-
-#modal-editar-evento .btn-primary:hover {
-  background: #00501f !important;
-}
-
-#modal-editar-evento .btn-primary:active,
-#modal-editar-evento .btn-secondary:active {
-  transform: translateY(0) !important;
-}
-
-/* Modal editar evento: compresión extra para menos alto */
-#modal-editar-evento .modal-content {
-  max-width: 440px !important;
-  padding: 14px 16px !important;
-}
-
-#modal-editar-evento h3 {
-  font-size: 1.3rem !important;
-  margin: 4px 0 10px 0 !important;
-}
-
-#modal-editar-evento label {
-  margin: 6px 0 2px 0 !important;
-  font-size: 0.95rem !important;
-  line-height: 1.1 !important;
-}
-
-#modal-editar-evento input[type="text"],
-#modal-editar-evento input[type="date"],
-#modal-editar-evento input[type="time"],
-#modal-editar-evento input[type="number"],
-#modal-editar-evento input[type="url"] {
-  height: 36px !important;
-  padding: 8px 10px !important;
-  margin-bottom: 4px !important;
-}
-
-#modal-editar-evento textarea {
-  min-height: 64px !important;
-  padding: 8px 10px !important;
-}
-
-#modal-editar-evento .perfil-fila-sexo-edad {
-  gap: 8px !important;
-  margin-top: 0 !important;
-}
-
-#modal-editar-evento .modal-actions {
-  margin-top: 12px !important;
-  gap: 10px !important;
-}
-
-#modal-editar-evento .modal-actions button {
-  max-width: none !important;
-  padding: 0.55em 1.4em !important;
-  font-size: 0.95em !important;
-  border-radius: 8px !important;
 }
 
 /* Auth: ocultar body hasta validar sesión */
