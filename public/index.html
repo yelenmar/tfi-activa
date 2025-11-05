@@ -3,41 +3,44 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Activ  - Actividades Recreativas</title>
+  <title>Activá</title>
   <link rel="icon" type="image/png" href="img/Acti-removebg-preview.png">
   <link rel="stylesheet" href="css/styles.css">
   <!-- EmailJS para envío de correos -->
   <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
   <meta name="firebase-config" content='{"apiKey":"AIzaSyAgufVX3sdXEzTJQC6ZTqv6Clh0Coo4A40","authDomain":"tfi-activa.firebaseapp.com","projectId":"tfi-activa","storageBucket":"tfi-activa.firebasestorage.app","messagingSenderId":"459768332837","appId":"1:459768332837:web:e28594decec0743631b5cc","measurementId":"G-5944BHTK50"}'>
 </head>
-<body>
+<body class="home">
   <header class="header-principal">
     <div class="header-content">
       <img src="img/LOGO-removebg-preview.png" alt="Logo principal Activá" class="header-logo-centro">
     </div>
   </header>
-  <main class="main-container">
-    <div class="fondo-animado"></div>
-    <p class="subtitulo">
-      La app para crear, descubrir y unirte a actividades recreativas e informales.<br>
-      Encontrá una gran variedad de deportes, arte, música, juegos, talleres y mucho más.<br>
-      Organizá tus propios eventos o sumate a los de otros, y conocé personas con tus mismos intereses.
-    </p>
-    <div class="carrusel-full">
-      <div class="carrusel-imagenes" id="carrusel-imagenes">
-        <img src="img/1.png" alt="Actividad 1" class="img-actividad active">
-        <img src="img/2.png" alt="Actividad 2" class="img-actividad">
-        <img src="img/3.png" alt="Actividad 3" class="img-actividad">
-        <img src="img/4.png" alt="Actividad 4" class="img-actividad">
-        <img src="img/5.png" alt="Actividad 5" class="img-actividad">
-        <img src="img/6.png" alt="Actividad 6" class="img-actividad">
-        <img src="img/7.png" alt="Actividad 7" class="img-actividad">
-        <img src="img/8.png" alt="Actividad 8" class="img-actividad">
-        <img src="img/9.png" alt="Actividad 9" class="img-actividad">
-      </div>
-      <div id="carrusel-dots" aria-label="Paginación carrusel"></div>
+  <main class="main-container home-hero">
+    <div class="carrusel-imagenes" id="carrusel-imagenes">
+      <img src="img/1.png" alt="Actividad 1" class="img-actividad active">
+      <img src="img/2.png" alt="Actividad 2" class="img-actividad">
+      <img src="img/3.png" alt="Actividad 3" class="img-actividad">
+      <img src="img/4.png" alt="Actividad 4" class="img-actividad">
+      <img src="img/5.png" alt="Actividad 5" class="img-actividad">
+      <img src="img/6.png" alt="Actividad 6" class="img-actividad">
+      <img src="img/7.png" alt="Actividad 7" class="img-actividad">
+      <img src="img/8.png" alt="Actividad 8" class="img-actividad">
+      <img src="img/9.png" alt="Actividad 9" class="img-actividad">
     </div>
-    <a href="registro.html" class="btn-unirme">Unirme</a>
+
+    <div class="hero-overlay">
+      <div class="hero-card">
+        <p class="hero-text">
+          La app para crear, descubrir y unirte a actividades recreativas e informales.
+          Encontrá una gran variedad de deportes, arte, música, juegos, talleres y mucho más.
+          Organizá tus propios eventos o sumate a los de otros, y conocé personas con tus mismos intereses.
+        </p>
+        <a href="registro.html" class="btn-unirme">UNIRME</a>
+      </div>
+    </div>
+
+    <div id="carrusel-dots" aria-label="Paginación carrusel"></div>
   </main>
   <footer class="footer-tfi">
     TFI INGENIERIA EN SISTEMAS DE INFORMACION 2025. AUTORES : MAROSECK YELENKA Y RUIZ DIAZ LUCIANO

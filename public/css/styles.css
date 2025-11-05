@@ -680,6 +680,147 @@ form label {
   padding-left: 0;
 }
 
+/* =====================================================
+   HOME (index): Hero a pantalla completa sin scroll
+   ===================================================== */
+body.home {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.home .main-container.home-hero {
+  position: relative;
+  flex: 1 0 auto;
+  padding: 0;
+  margin: 0;
+  overflow: hidden; /* sin scroll */
+}
+
+/* Ocultar íconos del fondo animado en el home */
+.home .fondo-animado { display: none !important; }
+
+/* Carrusel como fondo full-bleed */
+.home .carrusel-imagenes {
+  position: fixed;            /* cubrir toda la ventana (incluye header y footer) */
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  border-radius: 0 !important; /* sin bordes redondeados */
+  box-shadow: none !important;  /* sin sombra de tarjeta */
+  z-index: 0;                 /* capa de fondo */
+  pointer-events: none;       /* no interceptar clics */
+}
+
+.home .carrusel-imagenes .img-actividad {
+  position: absolute;
+  top: 0; left: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  opacity: 0;
+  transition: opacity 0.8s ease-in-out, transform 10s ease;
+  transform: scale(1.05);
+}
+
+.home .carrusel-imagenes .img-actividad.active {
+  opacity: 1;
+  transform: scale(1.0);
+}
+
+/* Dots del carrusel (ocultos en home) */
+.home #carrusel-dots { display: none !important; }
+
+.home .carrusel-dot { display: none !important; }
+.home .carrusel-dot.active { display: none !important; }
+
+/* Recuadro central con transparencia */
+.home .hero-overlay {
+  position: relative;
+  z-index: 2;
+  width: 100%; height: 100%;
+  display: flex; align-items: center; justify-content: center;
+  padding: 24px;
+}
+
+/* Capa de profundidad: blur por encima del carrusel (debajo de la card) */
+/* Mover la capa de profundidad al body para cubrir header y footer */
+.home .main-container.home-hero::before { display: none !important; content: none !important; }
+body.home::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: 1; /* debajo de hero-overlay y header/footer (z-index:2) */
+  background: rgba(255,255,255,0.12);
+  backdrop-filter: blur(3px);
+  -webkit-backdrop-filter: blur(3px);
+  pointer-events: none;
+}
+
+/* Header y footer translúcidos para que se lea y se vea el fondo */
+.home .header-principal {
+  position: relative;
+  z-index: 2;
+  background: rgba(255,255,255,0.68);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+}
+.home .footer-tfi {
+  position: relative;
+  z-index: 2;
+  background: rgba(255,255,255,0.68);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  box-shadow: 0 -2px 8px rgba(0,0,0,0.06);
+}
+
+.home .hero-card {
+  background: rgba(255,255,255,0.68);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  border-radius: 16px;
+  border: 1px solid rgba(255,255,255,0.42);
+  box-shadow: 0 8px 26px rgba(0,0,0,0.14);
+  max-width: 520px;            /* más angosto */
+  width: min(84%, 520px);
+  padding: 34px 22px;          /* más alto (más padding vertical) */
+  text-align: center;
+}
+
+.home .hero-text {
+  color: #003918;
+  font-size: clamp(15px, 1vw + 12px, 18px);
+  line-height: 1.45;            /* mejor lectura */
+  margin: 0 0 14px 0;
+  text-wrap: balance;           /* equilibrar líneas cuando se pueda */
+}
+
+.home .btn-unirme {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, #006a2e, #003918);
+  color: #fff;
+  text-decoration: none;
+  font-weight: 700;
+  font-size: 14px;             /* tamaño más pequeño */
+  letter-spacing: .3px;
+  padding: 10px 20px;          /* más compacto */
+  min-width: 140px;            /* ancho reducido */
+  border-radius: 10px;
+  border: 1px solid rgba(255,255,255,0.35);
+  box-shadow: 0 6px 14px rgba(0,57,24,0.16);
+  text-transform: uppercase;
+  transition: transform .15s ease, box-shadow .15s ease, filter .15s ease;
+}
+.home .btn-unirme:hover { transform: translateY(-2px); box-shadow: 0 8px 18px rgba(0,57,24,0.22); filter: brightness(1.04); }
+
+@media (max-width: 640px) {
+  .home .hero-card { padding: 20px; width: 92%; }
+}
+
 form input,
 form textarea,
 form select {
