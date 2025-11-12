@@ -1,0 +1,21 @@
+// Reglas de seguridad para la colección emailQueue
+
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // Colección de Queue de Emails
+    match /emailQueue/{emailId} {
+      // Solo Cloud Functions pueden escribir
+      allow create: if false;
+      allow update: if false;
+      allow delete: if false;
+      
+      // Usuarios autenticados pueden leer sus propios emails
+      allow read: if request.auth != null && 
+                     request.auth.uid == resource.data.userId;
+    }
+    
+    // ... resto de tus reglas existentes ...
+  }
+}

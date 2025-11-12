@@ -1285,6 +1285,55 @@ body {
   }
 }
 
+/* ===========================
+   Cron Notifications (endpoint)
+   =========================== */
+body.cron-page {
+  font-family: Arial, sans-serif;
+  max-width: 800px;
+  margin: 50px auto;
+  padding: 20px;
+  background: #f5f5f5;
+}
+.status {
+  background: white;
+  padding: 20px;
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+.status h1 { color: #333; margin-top: 0; }
+.log {
+  background: #f9f9f9;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  padding: 15px;
+  margin-top: 20px;
+  max-height: 400px;
+  overflow-y: auto;
+  font-family: monospace;
+  font-size: 12px;
+}
+.log-entry {
+  margin: 5px 0;
+  padding: 5px;
+  border-left: 3px solid #4CAF50;
+  padding-left: 10px;
+}
+.log-entry.error { border-left-color: #f44336; color: #f44336; }
+.log-entry.success { border-left-color: #4CAF50; color: #4CAF50; }
+.log-entry.info { border-left-color: #2196F3; color: #2196F3; }
+.spinner {
+  border: 3px solid #f3f3f3;
+  border-top: 3px solid #4CAF50;
+  border-radius: 50%;
+  width: 30px;
+  height: 30px;
+  animation: spin 1s linear infinite;
+  display: inline-block;
+  margin-right: 10px;
+}
+@keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+
 /* Cambia el nombre y mejora el estilo del botón Unirse */
 .btn-unirse-evento-nuevo {
   background: var(--green-mid);
@@ -1518,8 +1567,8 @@ form textarea {
   border: 1.5px solid #e0e0e0;
   max-width: var(--card-max);
   width: 100%;
-  margin: 0.5em auto 0.5em auto;
-  padding: 1.5em 2em;
+  margin: 1.2em auto;
+  padding: 1.4em 1.6em;
   box-sizing: border-box;
   display: flex;
   flex-direction: column;
@@ -1536,15 +1585,15 @@ form textarea {
   border: 1.5px solid #e0e0e0;
   max-width: 600px;
   width: 100%;
-  margin: 2em auto 0.6em auto;
-  padding: 2em 2em;
+  margin: 1.2em auto;
+  padding: 1.6em 1.6em;
   box-sizing: border-box;
   display: flex;
   flex-direction: column;
-  gap: 4.2em;
+  gap: 1.2em;
   line-height: 1.08;
-  padding-top: 1.2em;
-  padding-bottom: 1.2em;
+  padding-top: 1em;
+  padding-bottom: 1em;
 }
 
 .form-title,
@@ -1669,7 +1718,8 @@ form textarea,
 }
 
 form input[type="email"],
-form input[type="tel"] {
+form input[type="tel"],
+form input[type="password"] {
   padding: 10px 12px;
   font-size: 1.08em;
   margin-bottom: 0.7em;
@@ -1680,9 +1730,7 @@ form input[type="tel"] {
   font-family: inherit;
 }
 
-/* ============================================
-   CONTENEDOR BLANCO DE VERIFICACIÓN DE CÓDIGO
-   ============================================ */
+
 
 .code-container-blanco {
   position: relative;
@@ -1690,7 +1738,7 @@ form input[type="tel"] {
   max-width: 600px;
   background: white;
   margin: 2em auto;
-  padding: 2.5em 2em;
+  padding: 1.5em 2em;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -1845,15 +1893,15 @@ form input[type="tel"] {
 
 /* Modifica el recuadro debajo de los botones para que tenga borde negro y esquinas rectas */
 .registro-input-box {
-  background: #f7fbf9; /* color más suave */
-  border-radius: 0 0 18px 18px;
-  border: 1.5px solid #e0e0e0;
-  margin-top: -8px;
+  background: #f7fbf9; /* color suave y uniforme */
+  border-radius: 12px; /* sin pestañas de teléfono: bordes completos */
+  border: 1.2px solid #e0e0e0;
+  margin-top: 0; /* ya no necesitamos compensar pestañas */
   margin-bottom: 0.5em;
   width: 100%;
   max-width: none;
   box-sizing: border-box;
-  padding: 2em 2em; /* más espacio a los costados */
+  padding: 1.2em 1.2em;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -1959,18 +2007,12 @@ form input[type="tel"] {
 }
 
 /* Ajusta el recuadro y los inputs para que ocupen todo el ancho */
+/* Ajuste final por eliminación de pestañas: mantener una sola definición coherente */
 .registro-input-box {
   width: 100%;
   max-width: none;
   box-sizing: border-box;
-  padding: 1.2em 1.2em;
-  margin-top: -16px;
-  margin-bottom: 0.5em;
-  border-radius: 0 0 12px 12px;
-  border: 0.2px solid rgba(0, 57, 24, 0.9);
-  display: flex;
-  flex-direction: column;
-  align-items: center;
+  /* ya definidos arriba: padding, borde y radios */
 }
 
 .registro-input-box form label,
@@ -2054,6 +2096,36 @@ form input[type="tel"] {
   background: #7c4dff;
   color: var(--white-soft);
 }
+
+/* Estados de Favoritos */
+.favoritos-cargando,
+.favoritos-vacio {
+  text-align: center;
+  padding: 2.2em 1.6em;
+  margin: 1.2em auto;
+  max-width: 640px;
+  border-radius: 14px;
+  border: 1.5px solid #e0e0e0;
+  background: #f7fbf9;
+  color: var(--green-dark);
+  font-size: 1.06rem;
+  box-shadow: 0 2px 10px rgba(0,0,0,0.04);
+}
+
+.favoritos-cargando::before {
+  content: '';
+  display: inline-block;
+  width: 14px;
+  height: 14px;
+  margin-right: 8px;
+  border-radius: 50%;
+  border: 2px solid #9cc5b0;
+  border-top-color: #2d5f3f;
+  animation: spin 0.8s linear infinite;
+  vertical-align: -2px;
+}
+
+@keyframes spin { to { transform: rotate(360deg); } }
 
 /* Estilo para la página de inicio (inicio.html) inspirado en tus capturas */
 .inicio-titulo {
@@ -2690,7 +2762,7 @@ form input[type="tel"] {
 }
 
 .historial-pasado::before {
-  content: 'FINALIZADO';
+  content: 'Finalizado';
   position: absolute;
   top: 12px;
   right: 12px;
@@ -5597,5 +5669,60 @@ body[data-protected="true"] {
   .code-container-blanco {
     padding: 0.9em 1em;
   }
+}
+
+/* Recuadro (hero-card) más angosto, compacto y con menos espaciado */
+.home .hero-card {
+  max-width: 420px;            /* aún más angosto */
+  min-height: 260px;           /* más compacto */
+  padding: 18px 20px;          /* menos padding vertical */
+  display: grid;               /* acomodar contenido */
+  grid-template-rows: 1fr auto;/* texto ocupa, botón abajo */
+  row-gap: 10px;               /* menos espacio entre texto y botón */
+  justify-items: center;       /* centrar horizontalmente los hijos */
+  align-items: stretch;        /* que el área de texto pueda ocupar */
+}
+
+.home .hero-card .hero-text {
+  margin: 0 0 0px 0;           /* margen mínimo antes del botón */
+  align-self: center;          /* centra el bloque de texto en su área */
+  max-width: 100%;             /* ocupa todo el ancho disponible (punta a punta) */
+  text-wrap: balance;          /* equilibrio de líneas */
+  hyphens: auto;               /* corte de palabras si corresponde */
+  -webkit-hyphens: auto;
+  text-align: center;            /* mejor lectura en párrafos largos */
+  font-size: clamp(20px, 1.1vw + 12px, 18px); /* tipografía un poco más grande */
+  line-height: 1.45;           /* espaciado entre líneas más compacto */
+}
+
+@media (max-width: 640px) {
+  .home .hero-card {
+    max-width: 92vw;           /* respeta márgenes en mobile */
+    min-height: 240px;         /* más compacto en mobile */
+    padding: 14px 16px;        /* menos padding */
+  }
+  .home .hero-card .hero-text {
+    font-size: clamp(14px, 3.4vw, 17px); /* tipografía un poco más grande en móvil */
+    line-height: 1.4;
+  }
+}
+
+/* Botón UNIRME con más border-radius y sombra sutil (solo en home) */
+.home .hero-card .btn-unirme {
+  padding: 6px 12px;           /* menos padding */
+  min-width: 120px;            /* más angosto */
+  border: none;                /* sin borde */
+  border-radius: 20px;         /* más redondeado */
+  box-shadow: 0 4px 10px rgba(0,57,24,0.14); /* sombra sutil */
+  font-size: 0.95rem;          /* tamaño moderado */
+  height: auto;                /* evita altura forzada por estilos base */
+  min-height: 36px;            /* altura mínima cómoda */
+  line-height: 1.2;            /* texto más compacto */
+}
+
+.home .hero-card .btn-unirme:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 12px rgba(0,57,24,0.18);
+  filter: brightness(1.04);
 }
 

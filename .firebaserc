@@ -1,5 +1,15 @@
 {
   "projects": {
     "default": "tfi-activa"
-  }
+  },
+  "targets": {
+    "tfi-activa": {
+      "hosting": {
+        "tfi-activa": [
+          "tfi-activa"
+        ]
+      }
+    }
+  },
+  "etags": {}
 }

@@ -1,61 +1,95 @@
-rules_version='2'
+rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
     
-    // ✅ REGLAS DE SEGURIDAD MEJORADAS (Prioridad BAJA)
-    
-    // Colección: usuarios
-    // - Lectura: Solo el usuario autenticado puede leer su propio documento
-    // - Escritura: Solo para crear nuevos usuarios (registro)
+    // ==========================
+    // USUARIOS
+    // ==========================
     match /usuarios/{userId} {
-      allow read: if true; // Permitir lectura para login
-      allow create: if true; // Permitir crear usuarios (registro)
-      allow update, delete: if false; // No permitir actualizar ni borrar por ahora
+      // Lectura pública (para listar usuarios en notificaciones y perfiles)
+      allow read: if true;
+      // Escritura abierta (tu app usa IDs derivados de email, no de Firebase Auth)
+      allow write: if true;
     }
-    
-    // Colección: perfiles
-    // - Lectura: Cualquiera puede leer perfiles (para ver organizadores y participantes)
-    // - Escritura: Solo el dueño del perfil puede editarlo
+
+    // ==========================
+    // PERFILES
+    // ==========================
     match /perfiles/{perfilId} {
-      allow read: if true; // Público (para ver organizadores)
-      allow create, update: if true; // Permitir crear/editar perfil
-      allow delete: if false; // No permitir borrar
+      // Lectura pública (para mostrar organizadores y participantes)
+      allow read: if true;
+      // Escritura abierta (tu app gestiona perfiles con IDs locales)
+      allow write: if true;
     }
-    
-    // Colección: eventos
-    // - Lectura: Todos pueden ver eventos
-    // - Crear: Cualquier usuario puede crear eventos
-    // - Actualizar: Solo el organizador puede editar su evento
-    // - Borrar: Solo el organizador puede borrar su evento
+
+    // ==========================
+    // EVENTOS
+    // ==========================
     match /eventos/{eventoId} {
-      allow read: if true; // Público
-      allow create: if true; // Cualquiera puede crear
-      allow update: if true; // Por ahora permitir (implementar validación organizadorId en cliente)
-      allow delete: if true; // Por ahora permitir (implementar validación organizadorId en cliente)
-      // TODO: Implementar cuando haya autenticación real:
-      // allow update, delete: if request.auth != null && resource.data.organizadorId == request.auth.uid;
+      // Lectura pública (necesaria para listar eventos en inicio, favoritos, perfil)
+      allow read: if true;
+      // Escritura abierta (tu app valida permisos en cliente; organizador crea/edita/borra)
+      allow write: if true;
     }
-    
-    // Colección: favoritos
-    // - Lectura: Solo el dueño de favoritos
-    // - Escritura: Solo el dueño puede crear/borrar
-    match /favoritos/{favoritoId} {
-      allow read: if true; // Por ahora público (filtrado en cliente)
-      allow create, delete: if true; // Permitir agregar/quitar favoritos
-      allow update: if false; // No se actualizan favoritos
+
+    // ==========================
+    // FAVORITOS
+    // ==========================
+    match /favoritos/{favId} {
+      // Lectura y escritura abiertas (la app filtra por userId en queries y localmente)
+      allow read, write: if true;
     }
-    
-    // Colección: historial
-    // - Lectura: Solo el dueño del historial
-    // - Escritura: Solo el dueño puede crear/actualizar/borrar
-    match /historial/{historialId} {
-      allow read: if true; // Por ahora público (filtrado en cliente)
-      allow create, update, delete: if true; // Permitir gestionar historial
+
+    // ==========================
+    // HISTORIAL
+    // ==========================
+    match /historial/{histId} {
+      // Lectura abierta (la app filtra en cliente por prefijo de ID userId_eventoId_tipo)
+      allow read: if true;
+      // Escritura abierta (crear/actualizar/borrar entradas de historial propio y ajeno para reparaciones)
+      allow write: if true;
     }
-    
-    // Denegar acceso a cualquier otra colección no especificada
+
+    // ==========================
+    // NOTIFICACIONES
+    // ==========================
+    match /notificaciones/{notifId} {
+      // Lectura y escritura abiertas (sistema de notificaciones crea para cualquier usuario)
+      allow read, write: if true;
+    }
+
+    // ==========================
+    // NOTIFICACIONES_ULTIMA (anti-duplicados)
+    // ==========================
+    match /notificaciones_ultima/{uniqId} {
+      // Lectura y escritura abiertas (marcadores de última notificación enviada)
+      allow read, write: if true;
+    }
+
+    // ==========================
+    // VALORACIONES
+    // ==========================
+    match /valoraciones/{valId} {
+      // Lectura pública (para calcular promedios)
+      allow read: if true;
+      // Escritura abierta (participantes valoran eventos pasados)
+      allow write: if true;
+    }
+
+    // ==========================
+    // EMAIL QUEUE (opcional)
+    // ==========================
+    match /emailQueue/{emailId} {
+      // Lectura y escritura abiertas si usas esta colección
+      allow read, write: if true;
+    }
+
+    // ==========================
+    // CUALQUIER OTRA COLECCIÓN NO DECLARADA
+    // ==========================
     match /{document=**} {
+      // Bloquear acceso a rutas no definidas explícitamente arriba
       allow read, write: if false;
     }
   }

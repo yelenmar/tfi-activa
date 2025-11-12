@@ -1,0 +1,4 @@
+cd "C:\proyectos\PROYECTO-FINAL-INTEGRADOR-VSC"
+git status
+git commit -m "Actualización del código del proyecto final"
+git push origin main

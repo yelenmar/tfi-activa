@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Cron Notifications - Activa</title>
+  <meta name="firebase-config" content='{"apiKey":"AIzaSyAgufVX3sdXEzTJQC6ZTqv6Clh0Coo4A40","authDomain":"tfi-activa.firebaseapp.com","projectId":"tfi-activa","storageBucket":"tfi-activa.firebasestorage.app","messagingSenderId":"459768332837","appId":"1:459768332837:web:e28594decec0743631b5cc","measurementId":"G-5944BHTK50"}'>
+  <link rel="stylesheet" href="/css/styles.css" />
+</head>
+<body class="cron-page">
+  <div class="status">
+    <h1>Sistema de Notificaciones Automáticas</h1>
+    <p id="status">
+      <span class="spinner"></span>
+      <strong>Ejecutando recordatorios...</strong>
+    </p>
+    <div class="log" id="log"></div>
+  </div>
+
+  <script type="module" src="/script/script.js"></script>
+  <script type="module">
+    window.addEventListener('load', () => {
+      if (typeof window.ejecutarCronNotificaciones === 'function') {
+        setTimeout(() => window.ejecutarCronNotificaciones(), 800);
+      }
+    });
+  </script>
+</body>
+</html>

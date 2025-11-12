@@ -3,7 +3,7 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.1/firebas
 import { getFirestore, collection, addDoc, getDocs, doc, setDoc, getDoc, deleteDoc, query, where, orderBy, limit } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-firestore.js";
 
 // Silenciar logs informativos en producción (mantiene warnings y errores)
-const SILENCE_INFO_LOGS = true;
+const SILENCE_INFO_LOGS = false; // ✅ Logs activados para debugging
 if (SILENCE_INFO_LOGS && typeof console !== 'undefined') {
   console.info = () => {};
   console.log = () => {};
@@ -100,13 +100,36 @@ const deleteFromFirestore = async (col, id) => {
 // ==============================
 // Configuración actualizada con cuenta de EmailJS "Activa"
 // Service ID: service_qfr7y9j
-// Template ID: template_p7ka3kx (One-Time Password)
+// Template ID OTP: template_p7ka3kx (One-Time Password)
+// Template ID Recordatorio: template_jnca4xh (Recordatorios de eventos)
 const EMAILJS_CONFIG = {
   PUBLIC_KEY: '-dIDVhLNDyn8jILqB',       // Nueva Public Key provista
   SERVICE_ID: 'service_qfr7y9j',         // Nuevo servicio "Activa"
   TEMPLATE_ID: 'template_p7ka3kx',       // Nuevo template OTP
-  TEMPLATE_ID_NOTIF: ''                  // Opcional: template para notificaciones
+  TEMPLATE_ID_RECORDATORIO: 'template_jnca4xh'  // Template para recordatorios de eventos
 };
+
+/*
+============================================================
+ Consolidación: Lógica equivalente a functions/index.js
+============================================================
+Este archivo concentra TODA la lógica de notificaciones en el cliente
+(sin Cloud Functions, sin plan pago). Equivalencias:
+
+- processEmailQueue              → No se usa en cliente (opcional cliente-trabajador)
+- recordatorios3Dias             → enviarRecordatorios3Dias()
+- recordatorios24Horas           → enviarRecordatorios24Horas()
+- recordatoriosDiaEvento         → enviarRecordatoriosDiaDelEvento()
+- recordatorios1Hora             → enviarRecordatorios1Hora()
+- eventosDisponiblesHoy          → notificarEventosDisponiblesHoy()
+- notificarEdicionEvento (trigger) → notificarEdicionEvento() (se invoca al guardar edición)
+- confirmacionUnion (trigger)      → enviarConfirmacionUnion() + notificarOrganizadorNuevoParticipante()
+
+Para evitar servicios pagos:
+- Todos los envíos usan EmailJS desde el navegador (EMAILJS_CONFIG)
+- Los “cron” se simulan con iniciarSistemaNotificaciones() usando setInterval
+- Si se desea coordinación entre clientes sin servidor, ver GUIA_NOTIFICACIONES_GRATIS.md
+*/
 
 // ==============================
 // Favoritos: helpers (fallback local)
@@ -209,23 +232,57 @@ const esAdministrador = async () => {
 // ==============================
 const pad2 = (n) => String(n).padStart(2, '0');
 
-// Formatear fecha ISO (YYYY-MM-DD) a formato argentino (DD/MM/YYYY)
-const formatearFechaArgentina = (fechaStr) => {
-  if (!fechaStr) return '';
-  // Si es formato ISO YYYY-MM-DD, parsear directamente sin zona horaria
-  const match = fechaStr.match(/^(\d{4})-(\d{2})-(\d{2})$/);
-  if (match) {
-    const [_, year, month, day] = match;
-    return `${day}/${month}/${year}`;
-  }
-  // Fallback: intentar parsear como fecha
-  try {
-    const fecha = new Date(fechaStr);
-    if (!isNaN(fecha.getTime())) {
-      return `${pad2(fecha.getDate())}/${pad2(fecha.getMonth() + 1)}/${fecha.getFullYear()}`;
+// Formatear fecha a formato argentino (DD/MM/YYYY) aceptando múltiples tipos
+// Acepta: "YYYY-MM-DD" | Date | Firestore Timestamp | número epoch (ms o s) | string fecha
+const formatearFechaArgentina = (valor) => {
+  if (valor === undefined || valor === null || valor === '') return '';
+
+  // 1) ISO string YYYY-MM-DD
+  if (typeof valor === 'string') {
+    const match = valor.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+    if (match) {
+      const [_, year, month, day] = match;
+      return `${day}/${month}/${year}`;
     }
-  } catch (e) {}
-  return fechaStr; // Devolver original si no se puede parsear
+  }
+
+  // 2) Firestore Timestamp-like { seconds, nanoseconds }
+  if (typeof valor === 'object' && valor && typeof valor.seconds === 'number') {
+    const ms = valor.seconds * 1000 + Math.floor((valor.nanoseconds || 0) / 1e6);
+    const d = new Date(ms);
+    if (!isNaN(d.getTime())) return `${pad2(d.getDate())}/${pad2(d.getMonth() + 1)}/${d.getFullYear()}`;
+  }
+
+  // 3) Date instancia
+  if (valor instanceof Date) {
+    if (!isNaN(valor.getTime())) return `${pad2(valor.getDate())}/${pad2(valor.getMonth() + 1)}/${valor.getFullYear()}`;
+  }
+
+  // 4) Número epoch (ms o s)
+  if (typeof valor === 'number' && isFinite(valor)) {
+    // Si es menor a 1e12 probablemente sean segundos; si es mayor, milisegundos
+    const ms = valor < 1e12 ? valor * 1000 : valor;
+    const d = new Date(ms);
+    if (!isNaN(d.getTime()) && d.getFullYear() > 1970) {
+      return `${pad2(d.getDate())}/${pad2(d.getMonth() + 1)}/${d.getFullYear()}`;
+    }
+    // Si es un número pequeño (por ejemplo fracción), ignoramos y devolvemos vacío para evitar valores raros
+    return '';
+  }
+
+  // 5) Cualquier otro string: intentar parsear
+  if (typeof valor === 'string') {
+    try {
+      const d = new Date(valor);
+      if (!isNaN(d.getTime())) {
+        return `${pad2(d.getDate())}/${pad2(d.getMonth() + 1)}/${d.getFullYear()}`;
+      }
+    } catch (e) {}
+    // Si no se puede, devolver tal cual para depurar
+    return valor;
+  }
+
+  return '';
 };
 
 // Formatear hora en formato 24hs argentino (HH:mm)
@@ -248,6 +305,38 @@ const crearFechaLocal = (fechaISO, horaStr) => {
   return new Date(year, month - 1, day, hours, minutes);
 };
 
+// Control anti-duplicados por combinación (userId, eventoId, tipo)
+const fueNotificadaRecientemente = async (userId, eventoId, tipo, ventanaHoras = 24) => {
+  try {
+    const id = `${userId}_${eventoId}_${tipo}`;
+    const ref = doc(db, 'notificaciones_ultima', id);
+    const snap = await getDoc(ref);
+    if (!snap.exists()) return false;
+    const last = snap.data().lastSent || snap.data().fechaEnvio;
+    if (!last) return true; // si existe marcador sin fecha, no reenviar por seguridad
+    const diff = Date.now() - new Date(last).getTime();
+    return diff < ventanaHoras * 3600000;
+  } catch (e) {
+    console.warn('No se pudo verificar notificación previa (continúo):', e?.message || e);
+    return false;
+  }
+};
+
+// Marcar una notificación como enviada (anti-duplicado)
+const marcarNotificacionEnviada = async (userId, eventoId, tipo) => {
+  try {
+    const id = `${userId}_${eventoId}_${tipo}`;
+    await setDoc(doc(db, 'notificaciones_ultima', id), {
+      userId,
+      eventoId,
+      tipo,
+      lastSent: new Date().toISOString()
+    }, { merge: true });
+  } catch (e) {
+    console.warn('No se pudo marcar notificación enviada:', e?.message || e);
+  }
+};
+
 // ==============================
 // SISTEMA DE NOTIFICACIONES (Email y WhatsApp)
 // ==============================
@@ -260,8 +349,51 @@ const TIPO_NOTIF = {
   EVENTO_EDITADO: 'evento_editado',
   EVENTO_CANCELADO: 'evento_cancelado',
   CONFIRMAR_ASISTENCIA: 'confirmar_asistencia',
-  CONFIRMACION_RECIBIDA: 'confirmacion_recibida'
+  CONFIRMACION_RECIBIDA: 'confirmacion_recibida',
+  NUEVO_EVENTO: 'nuevo_evento'
 };
+
+/**
+ * Notificar a todos los usuarios activos (excepto organizador) sobre nuevo evento
+ */
+async function notificarNuevoEvento(evento, eventoId) {
+  try {
+    const todosUsuarios = await getFromFirestore('usuarios');
+    if (!todosUsuarios || todosUsuarios.length === 0) return;
+    for (const usuario of todosUsuarios) {
+      if (usuario.id === evento.organizadorId) continue;
+      const email = usuario.email || usuario.destino;
+      if (!email || !email.includes('@')) continue;
+      const nombreCompleto = `${usuario.nombre || ''} ${usuario.apellido || ''}`.trim() || 'Usuario';
+      // Anti-duplicado: ventana 24h
+      const duplicada = await fueNotificadaRecientemente(usuario.id, eventoId, TIPO_NOTIF.NUEVO_EVENTO, 24);
+      if (duplicada) continue;
+      await loadEmailJS();
+      const templateParams = {
+        to_email: email,
+        to_name: nombreCompleto,
+        user_name: nombreCompleto,
+        subject: sinAcentos(`¡Nuevo evento disponible! ${evento.titulo}`),
+        message: `Se ha creado un nuevo evento: ${evento.titulo}. Sumate si te interesa.`,
+        event_name: evento.titulo || 'Sin título',
+        event_date: formatearFechaArgentina(evento.fecha) || 'No especificada',
+        event_time: formatearHoraArgentina(evento.hora) || 'No especificada',
+        event_location: evento.ubicacion || evento.lugar || 'No especificado',
+        event_description: evento.descripcion || 'Sin descripción'
+      };
+      await emailjs.send(
+        EMAILJS_CONFIG.SERVICE_ID,
+        EMAILJS_CONFIG.TEMPLATE_ID_RECORDATORIO,
+        templateParams
+      );
+      await marcarNotificacionEnviada(usuario.id, eventoId, TIPO_NOTIF.NUEVO_EVENTO);
+      await new Promise(resolve => setTimeout(resolve, 500));
+    }
+    console.log('✅ Notificaciones de nuevo evento enviadas');
+  } catch (error) {
+    console.error('❌ Error en notificarNuevoEvento:', error);
+  }
+}
 
 /**
  * Enviar email usando EmailJS
@@ -285,10 +417,10 @@ async function enviarEmail(destinatario, asunto, mensaje) {
       reply_to: destinatario,
       to: destinatario,
       // Contenido
-      verification_code: mensaje,
-      codigo: mensaje,
-      code: mensaje,
-      subject: asunto || 'Notificación',
+      verification_code: mensaje || '',
+      codigo: mensaje || '',
+      code: mensaje || '',
+      subject: asunto || 'Notificacion',
       app_name: 'Activá'
     };
     const response = await emailjs.send(
@@ -358,6 +490,15 @@ async function registrarNotificacion(userId, tipo, eventoId, mensaje, metadata =
       metadata: metadataLimpio
     });
     
+    // Actualizar marcador de última notificación para evitar duplicados
+    const uniqId = `${userId}_${eventoId}_${tipo}`;
+    await setDoc(doc(db, 'notificaciones_ultima', uniqId), {
+      userId,
+      eventoId,
+      tipo,
+      lastSent: new Date().toISOString()
+    }, { merge: true });
+    
     console.log('Notificación registrada:', notifId);
     return true;
   } catch (error) {
@@ -381,7 +522,12 @@ async function enviarNotificacion(userId, tipo, eventoId, mensaje, metadata = {}
     }
     
     const usuario = userSnap.data();
-    const metodo = usuario.metodoComunicacion || 'email';
+    // ÚNICO CANAL: EMAIL
+    const emailCandidato = (usuario.email && typeof usuario.email === 'string' && usuario.email.includes('@'))
+      ? usuario.email
+      : (usuario.destino && typeof usuario.destino === 'string' && usuario.destino.includes('@'))
+        ? usuario.destino
+        : '';
     const notificacionesActivas = usuario.notificacionesActivas !== false; // Por defecto true
     
     // Si el usuario desactivó notificaciones, no enviar
@@ -393,17 +539,21 @@ async function enviarNotificacion(userId, tipo, eventoId, mensaje, metadata = {}
     // Registrar en Firestore
     await registrarNotificacion(userId, tipo, eventoId, mensaje, metadata);
     
-    // Enviar según método preferido
+    // Enviar SIEMPRE por EMAIL
     let enviado = false;
-    if (metodo === 'email' && usuario.email) {
+    console.log(`📣 [enviarNotificacion] Canal: email | email=${emailCandidato || '-'}`);
+    if (emailCandidato) {
       const asunto = `Activá - ${metadata.tituloEvento || 'Notificación'}`;
-      enviado = await enviarEmail(usuario.email, asunto, mensaje);
-    } else if (metodo === 'telefono' && usuario.telefono) {
-      enviado = enviarWhatsApp(usuario.telefono, mensaje);
+      console.log(`📧 [enviarNotificacion] Enviando EMAIL a ${emailCandidato} | tipo=${tipo}`);
+      enviado = await enviarEmail(emailCandidato, asunto, mensaje);
+    } else {
+      console.warn(`🚫 [enviarNotificacion] Usuario ${userId} no tiene email válido en 'email' ni en 'destino'.`);
     }
     
     if (enviado) {
-      console.log(`Notificación enviada a ${usuario.nombre} vía ${metodo}`);
+      console.log(`✅ [enviarNotificacion] Notificación enviada a ${usuario.nombre || userId} por EMAIL`);
+    } else {
+      console.warn(`❌ [enviarNotificacion] Falló el envío a ${usuario.nombre || userId}. Ver logs previos.`);
     }
     
     return enviado;
@@ -421,33 +571,57 @@ async function notificarParticipantes(eventoId, tipo, mensaje, metadata = {}) {
     // Obtener evento
     const eventoRef = doc(db, 'eventos', eventoId);
     const eventoSnap = await getDoc(eventoRef);
-    
     if (!eventoSnap.exists()) {
       console.error('Evento no encontrado:', eventoId);
       return;
     }
-    
+
     const evento = eventoSnap.data();
     const participantes = Array.isArray(evento.participantes)
       ? evento.participantes
       : (Array.isArray(evento.usuariosUnidos) ? evento.usuariosUnidos : []);
-    
+
     if (participantes.length === 0) {
       console.log('No hay participantes para notificar');
       return;
     }
-    
-    // Agregar título del evento a metadata
-    metadata.tituloEvento = evento.titulo;
-    
-    // Enviar notificación a cada participante
-    console.log(`Notificando a ${participantes.length} participantes del evento "${evento.titulo}"`);
-    
-    const promesas = participantes.map(userId => 
-      enviarNotificacion(userId, tipo, eventoId, mensaje, metadata)
-    );
-    
-    await Promise.allSettled(promesas);
+
+    // Determinar tipo de email para plantilla estilizada
+  let tipoEmail = 'dia';
+  if (tipo === TIPO_NOTIF.CONFIRMAR_ASISTENCIA) tipoEmail = 'confirmar_asistencia';
+  else if (tipo === TIPO_NOTIF.RECORDATORIO_DIA) tipoEmail = 'dia';
+
+    console.log(`📧 Usando plantilla estilizada para ${participantes.length} participantes. Tipo=${tipoEmail}`);
+
+    // Ventana por tipo
+    const ventanaHorasPorTipo = (t) => {
+      if (t === TIPO_NOTIF.RECORDATORIO_3DIAS) return 30;
+      if (t === TIPO_NOTIF.RECORDATORIO_DIA) return 20;
+      if (t === TIPO_NOTIF.CONFIRMAR_ASISTENCIA) return 30;
+      if (t === TIPO_NOTIF.EVENTO_DISPONIBLE) return 10;
+      return 24;
+    };
+
+    for (const userId of participantes) {
+      try {
+        const usuario = await getFromFirestore('usuarios', userId);
+        if (!usuario) continue;
+        const email = (usuario.email && usuario.email.includes('@')) ? usuario.email : (usuario.destino && usuario.destino.includes('@') ? usuario.destino : '');
+        if (!email) continue;
+        const nombreCompleto = `${usuario.nombre || ''} ${usuario.apellido || ''}`.trim() || 'Usuario';
+        // No enviar si el evento ya pasó
+        const fechaEvt = crearFechaLocal(evento.fecha, evento.hora);
+        if (!fechaEvt || fechaEvt.getTime() <= Date.now()) { continue; }
+        // Anti-duplicados por tipo
+        const duplicada = await fueNotificadaRecientemente(userId, eventoId, tipo, ventanaHorasPorTipo(tipo));
+        if (duplicada) { console.log(`⏭️ Ya se envió a ${userId} (día del evento) para ${evento.titulo}`); continue; }
+        await enviarEmailRecordatorio(email, evento, tipoEmail, nombreCompleto);
+        await marcarNotificacionEnviada(userId, eventoId, tipo);
+        await new Promise(r => setTimeout(r, 400));
+      } catch (e) {
+        console.error(`Error enviando email a participante ${userId}:`, e);
+      }
+    }
     console.log('Notificaciones enviadas a participantes');
   } catch (error) {
     console.error('Error al notificar participantes:', error);
@@ -462,42 +636,45 @@ async function notificarTodosUsuarios(eventoId, mensaje, metadata = {}) {
     // Obtener evento
     const eventoRef = doc(db, 'eventos', eventoId);
     const eventoSnap = await getDoc(eventoRef);
-    
     if (!eventoSnap.exists()) return;
-    
+
     const evento = eventoSnap.data();
     const participantes = Array.isArray(evento.participantes)
       ? evento.participantes
       : (Array.isArray(evento.usuariosUnidos) ? evento.usuariosUnidos : []);
-    
+
     // Obtener todos los usuarios
     const usuariosRef = collection(db, 'usuarios');
     const usuariosSnap = await getDocs(usuariosRef);
-    
     if (usuariosSnap.empty) return;
-    
+
     // Filtrar usuarios que NO son participantes
     const usuariosNoParticipantes = [];
     usuariosSnap.forEach(doc => {
       if (!participantes.includes(doc.id)) {
-        usuariosNoParticipantes.push(doc.id);
+        usuariosNoParticipantes.push({ id: doc.id, ...doc.data() });
       }
     });
-    
+
     if (usuariosNoParticipantes.length === 0) {
       console.log('No hay usuarios para notificar (todos son participantes)');
       return;
     }
-    
-    metadata.tituloEvento = evento.titulo;
-    
-    console.log(`Notificando a ${usuariosNoParticipantes.length} usuarios sobre evento disponible`);
-    
-    const promesas = usuariosNoParticipantes.map(userId =>
-      enviarNotificacion(userId, TIPO_NOTIF.EVENTO_DISPONIBLE, eventoId, mensaje, metadata)
-    );
-    
-    await Promise.allSettled(promesas);
+
+    console.log(`Notificando a ${usuariosNoParticipantes.length} usuarios sobre evento disponible (plantilla estilizada)`);
+
+    for (const usuario of usuariosNoParticipantes) {
+      try {
+        const email = (usuario.email && usuario.email.includes('@')) ? usuario.email : (usuario.destino && usuario.destino.includes('@') ? usuario.destino : '');
+        if (!email) continue;
+        const nombreCompleto = `${usuario.nombre || ''} ${usuario.apellido || ''}`.trim() || 'Usuario';
+        await enviarEmailRecordatorio(email, evento, 'evento_disponible', nombreCompleto);
+        await new Promise(r => setTimeout(r, 500));
+      } catch (e) {
+        console.error(`Error notificando usuario ${usuario.id}:`, e);
+      }
+    }
+
     console.log('Notificaciones broadcast enviadas');
   } catch (error) {
     console.error('Error al notificar a todos los usuarios:', error);
@@ -597,20 +774,953 @@ async function generarRecordatoriosDiarios() {
   }
 }
 
+// ==============================
+// FUNCIONES DE NOTIFICACIONES POR EMAIL
+// ==============================
+
+// Función para corregir doble codificación UTF-8
+const corregirCodificacion = (txt = '') => {
+  try {
+    let str = String(txt);
+    
+    // Reemplazos directos de patrones mal codificados más comunes
+    str = str.replace(/Ã¡/g, 'á');
+    str = str.replace(/Ã©/g, 'é');
+    str = str.replace(/Ã­/g, 'í');
+    str = str.replace(/Ã³/g, 'ó');
+    str = str.replace(/Ãº/g, 'ú');
+    str = str.replace(/Ã±/g, 'ñ');
+    str = str.replace(/Ã¼/g, 'ü');
+    str = str.replace(/Â¡/g, '¡');
+    str = str.replace(/Â¿/g, '¿');
+    
+    // Patrones de triple codificación (más severos)
+    str = str.replace(/ÃƒÂ³/g, 'ó');
+    str = str.replace(/ÃƒÂ±/g, 'ñ');
+    str = str.replace(/ÃƒÂ¡/g, 'á');
+    str = str.replace(/ÃƒÂ©/g, 'é');
+    str = str.replace(/ÃƒÂ­/g, 'í');
+    str = str.replace(/ÃƒÂº/g, 'ú');
+    str = str.replace(/Ãƒ/g, 'Ó');
+    str = str.replace(/Ã‚/g, '');
+    
+    return str;
+  } catch { 
+    return String(txt || ''); 
+  }
+};
+
+// Sanitizador básico para evitar caracteres raros en algunos clientes de correo
+const sinAcentos = (txt = '') => {
+  try {
+    return String(txt)
+      .normalize('NFD').replace(/[\u0300-\u036f]/g, '') // quitar diacríticos
+      .replace(/[¡]/g, '!').replace(/[¿]/g, '?');         // puntación invertida
+  } catch { return String(txt || ''); }
+};
+
+/**
+ * Enviar email de recordatorio usando template dedicado
+ * @param {string} destinatario - Email del destinatario
+ * @param {object} eventoData - Datos del evento
+ * @param {string} tipoRecordatorio - Tipo: '24h', '1h', 'confirmacion', 'nuevo_participante'
+ */
+async function enviarEmailRecordatorio(destinatario, eventoData, tipoRecordatorio, nombreUsuario = '') {
+  try {
+    console.log(`📧 [enviarEmailRecordatorio] Tipo: ${tipoRecordatorio}, Destinatario: ${destinatario}`);
+    
+    await loadEmailJS();
+    console.log(`📧 [enviarEmailRecordatorio] EmailJS cargado`);
+    
+    let subject = '';
+    let message = '';
+    
+    switch(tipoRecordatorio) {
+      case '24h':
+        subject = `Recordatorio: ${eventoData.titulo} es mañana`;
+          message = `Te recordamos que mañana tenés el siguiente evento:`;
+        break;
+      case '1h':
+        subject = `¡Comienza en 1 hora! ${eventoData.titulo}`;
+          message = `Tu evento comienza en aproximadamente 1 hora. No te lo pierdas:`;
+        break;
+      case 'dia':
+        subject = `¡Hoy es el evento! ${eventoData.titulo}`;
+          message = `¡Hoy es el día! Te esperamos en:`;
+        break;
+      case 'confirmacion':
+        subject = `Confirmación: Te uniste a ${eventoData.titulo}`;
+          message = `Confirmamos tu participación en el siguiente evento:`;
+        break;
+      case 'confirmar_asistencia':
+        subject = `Confirmá tu asistencia: ${eventoData.titulo}`;
+          message = `Por favor confirmá si vas a asistir. Detalles del evento:`;
+        break;
+      case 'nuevo_participante':
+        subject = `Nuevo participante en tu evento: ${eventoData.titulo}`;
+          message = `Un nuevo participante se unió a tu evento:`;
+        break;
+      case 'evento_disponible':
+        subject = `¡Cupos disponibles para HOY! ${eventoData.titulo}`;
+          message = `Todavía hay lugares para este evento que ocurre HOY:`;
+        break;
+      default:
+        subject = `Notificación sobre ${eventoData.titulo}`;
+        message = `¡Hola ${nombreUsuario}! Te enviamos una notificación sobre el siguiente evento:`;
+    }
+    
+    const templateParams = {
+      to_name: nombreUsuario,
+      to_email: destinatario,
+      from_name: 'Activa',
+      reply_to: 'activapp.oficial@gmail.com',
+      user_name: nombreUsuario,
+      subject: sinAcentos(subject),
+      message: message,
+      event_name: eventoData.titulo || 'Sin título',
+      event_date: formatearFechaArgentina(eventoData.fecha) || 'No especificada',
+      event_time: formatearHoraArgentina(eventoData.hora) || 'No especificada',
+      event_location: eventoData.ubicacion || eventoData.lugar || 'No especificado',
+      event_description: eventoData.descripcion || 'Sin descripción'
+    };
+    
+    console.log(`📧 [enviarEmailRecordatorio] Template params:`, templateParams);
+    console.log(`📧 [enviarEmailRecordatorio] Destinatario final: ${destinatario}`);
+    
+    const response = await emailjs.send(
+      EMAILJS_CONFIG.SERVICE_ID,
+      EMAILJS_CONFIG.TEMPLATE_ID_RECORDATORIO,
+      templateParams
+    );
+    
+    console.log(`✅ [enviarEmailRecordatorio] Email de recordatorio (${tipoRecordatorio}) enviado a ${destinatario}`, response);
+    return true;
+  } catch (error) {
+    console.error(`❌ [enviarEmailRecordatorio] Error enviando email de recordatorio (${tipoRecordatorio}):`, error);
+    return false;
+  }
+}
+
+/**
+ * Enviar confirmación cuando un usuario se une a un evento
+ * @param {string} userId - ID del usuario que se une
+ * @param {string} eventoId - ID del evento
+ */
+async function enviarConfirmacionUnion(userId, eventoId) {
+  try {
+    console.log(`📧 [enviarConfirmacionUnion] Iniciando para userId=${userId}, eventoId=${eventoId}`);
+    
+    const usuario = await getFromFirestore('usuarios', userId);
+    const evento = await getFromFirestore('eventos', eventoId);
+    
+    console.log(`📧 [enviarConfirmacionUnion] Usuario encontrado:`, usuario ? 'Sí' : 'No');
+    console.log(`📧 [enviarConfirmacionUnion] Evento encontrado:`, evento ? 'Sí' : 'No');
+    
+    if (!usuario || !evento) {
+      console.error('❌ [enviarConfirmacionUnion] Usuario o evento no encontrado');
+      return false;
+    }
+    
+    // Obtener email del usuario
+    const email = usuario.email || usuario.destino;
+    console.log(`📧 [enviarConfirmacionUnion] Email detectado: ${email}`);
+    
+    if (!email || !email.includes('@')) {
+      console.log('⚠️ [enviarConfirmacionUnion] Usuario no tiene email válido');
+      return false;
+    }
+    
+    const nombreCompleto = `${usuario.nombre || ''} ${usuario.apellido || ''}`.trim() || 'Usuario';
+    console.log(`📧 [enviarConfirmacionUnion] Nombre: ${nombreCompleto}`);
+    
+    console.log(`📧 [enviarConfirmacionUnion] Llamando a enviarEmailRecordatorio...`);
+    await enviarEmailRecordatorio(email, evento, 'confirmacion', nombreCompleto);
+    
+    // Registrar en historial de notificaciones
+    await registrarNotificacion(
+      userId,
+      TIPO_NOTIF.CONFIRMACION_RECIBIDA,
+      eventoId,
+      `Confirmación de unión al evento ${evento.titulo}`,
+      { tituloEvento: evento.titulo }
+    );
+    
+    console.log(`✅ [enviarConfirmacionUnion] Proceso completado exitosamente`);
+    return true;
+  } catch (error) {
+    console.error('❌ [enviarConfirmacionUnion] Error:', error);
+    return false;
+  }
+}
+
+/**
+ * Notificar al organizador cuando alguien se une a su evento
+ * @param {string} organizadorId - ID del organizador del evento
+ * @param {string} nuevoParticipanteId - ID del usuario que se unió
+ * @param {string} eventoId - ID del evento
+ */
+async function notificarOrganizadorNuevoParticipante(organizadorId, nuevoParticipanteId, eventoId) {
+  try {
+    const organizador = await getFromFirestore('usuarios', organizadorId);
+    const participante = await getFromFirestore('usuarios', nuevoParticipanteId);
+    const evento = await getFromFirestore('eventos', eventoId);
+    
+    if (!organizador || !participante || !evento) {
+      console.error('Datos no encontrados para notificar organizador');
+      return false;
+    }
+    
+    // Obtener email del organizador
+    const emailOrganizador = organizador.email || organizador.destino;
+    if (!emailOrganizador || !emailOrganizador.includes('@')) {
+      console.log('Organizador no tiene email válido');
+      return false;
+    }
+    
+    const nombreOrganizador = `${organizador.nombre || ''} ${organizador.apellido || ''}`.trim() || 'Organizador';
+    const nombreParticipante = `${participante.nombre || ''} ${participante.apellido || ''}`.trim() || 'Un usuario';
+    
+    // Agregar info del nuevo participante al evento
+    const eventoConInfo = {
+      ...evento,
+      descripcion: `${nombreParticipante} se unió a tu evento. Total de participantes: ${(evento.participantes || evento.usuariosUnidos || []).length}`
+    };
+    
+    await enviarEmailRecordatorio(emailOrganizador, eventoConInfo, 'nuevo_participante', nombreOrganizador);
+    
+    return true;
+  } catch (error) {
+    console.error('Error notificando al organizador:', error);
+    return false;
+  }
+}
+
+/**
+ * Enviar recordatorios 24 horas antes de cada evento
+ * Debe ejecutarse diariamente
+ */
+async function enviarRecordatorios24Horas() {
+  try {
+    console.log('📧 Procesando recordatorios 24 horas...');
+    
+    const ahora = new Date();
+    const en24Horas = new Date(ahora.getTime() + (24 * 60 * 60 * 1000));
+    const fechaBuscada = en24Horas.toISOString().split('T')[0]; // YYYY-MM-DD
+    
+    // Obtener todos los eventos con fecha mañana
+    const eventos = await getFromFirestoreWhere('eventos', 'fecha', '==', fechaBuscada);
+    
+    if (!eventos || eventos.length === 0) {
+      console.log('No hay eventos programados para mañana');
+      return;
+    }
+    
+    console.log(`Encontrados ${eventos.length} eventos para mañana`);
+    
+    for (const evento of eventos) {
+      const participantes = evento.participantes || evento.usuariosUnidos || [];
+      
+      if (participantes.length === 0) {
+        console.log(`Evento "${evento.titulo}" no tiene participantes`);
+        continue;
+      }
+      
+      // Enviar recordatorio a cada participante
+      for (const userId of participantes) {
+        try {
+          const usuario = await getFromFirestore('usuarios', userId);
+          if (!usuario) continue;
+          
+          const email = usuario.email || usuario.destino;
+          if (!email || !email.includes('@')) continue;
+          
+          const nombreCompleto = `${usuario.nombre || ''} ${usuario.apellido || ''}`.trim() || 'Usuario';
+          // Evitar duplicados en la última 30h para recordatorio 24h (ventana amplia para no duplicar)
+          const duplicada = await fueNotificadaRecientemente(userId, evento.id, TIPO_NOTIF.RECORDATORIO_DIA, 30);
+          if (duplicada) { console.log(`⏭️ Ya se envió 24h a ${userId} para ${evento.titulo}`); continue; }
+          
+          await enviarEmailRecordatorio(email, evento, '24h', nombreCompleto);
+          await marcarNotificacionEnviada(userId, evento.id, TIPO_NOTIF.RECORDATORIO_DIA);
+          
+          // Pequeña pausa para no saturar EmailJS
+          await new Promise(resolve => setTimeout(resolve, 500));
+        } catch (error) {
+          console.error(`Error enviando recordatorio 24h a usuario ${userId}:`, error);
+        }
+      }
+    }
+    
+    console.log('✅ Recordatorios 24h procesados');
+  } catch (error) {
+    console.error('❌ Error en enviarRecordatorios24Horas:', error);
+  }
+}
+
+/**
+ * Enviar recordatorios 1 hora antes de cada evento
+ * Debe ejecutarse cada hora
+ */
+async function enviarRecordatorios1Hora() {
+  try {
+    console.log('📧 Procesando recordatorios 1 hora...');
+    
+    const ahora = new Date();
+    const en1Hora = new Date(ahora.getTime() + (60 * 60 * 1000));
+    
+    // Obtener todos los eventos
+    const eventos = await getFromFirestore('eventos');
+    
+    if (!eventos || eventos.length === 0) {
+      console.log('No hay eventos en la base de datos');
+      return;
+    }
+    
+    let eventosProcesados = 0;
+    
+    for (const evento of eventos) {
+      const fechaEvento = crearFechaLocal(evento.fecha, evento.hora);
+      if (!fechaEvento) continue;
+      
+      const diferenciaMs = fechaEvento.getTime() - ahora.getTime();
+      const diferenciaHoras = diferenciaMs / (60 * 60 * 1000);
+      
+      // Si el evento es entre 1 y 1.5 horas (para evitar envíos duplicados)
+      if (diferenciaHoras >= 1 && diferenciaHoras <= 1.5) {
+        const participantes = evento.participantes || evento.usuariosUnidos || [];
+        
+        if (participantes.length === 0) continue;
+        
+        for (const userId of participantes) {
+          try {
+            const usuario = await getFromFirestore('usuarios', userId);
+            if (!usuario) continue;
+            
+            const email = usuario.email || usuario.destino;
+            if (!email || !email.includes('@')) continue;
+            
+            const nombreCompleto = `${usuario.nombre || ''} ${usuario.apellido || ''}`.trim() || 'Usuario';
+            // Evitar duplicados en la última 2h
+            const duplicada = await fueNotificadaRecientemente(userId, evento.id, TIPO_NOTIF.RECORDATORIO_DIA, 2);
+            if (duplicada) { console.log(`⏭️ Ya se envió 1h a ${userId} para ${evento.titulo}`); continue; }
+            
+            await enviarEmailRecordatorio(email, evento, '1h', nombreCompleto);
+            await marcarNotificacionEnviada(userId, evento.id, TIPO_NOTIF.RECORDATORIO_DIA);
+            
+            await new Promise(resolve => setTimeout(resolve, 500));
+          } catch (error) {
+            console.error(`Error enviando recordatorio 1h a usuario ${userId}:`, error);
+          }
+        }
+        
+        eventosProcesados++;
+      }
+    }
+    
+    console.log(`✅ Recordatorios 1h procesados para ${eventosProcesados} eventos`);
+  } catch (error) {
+    console.error('❌ Error en enviarRecordatorios1Hora:', error);
+  }
+}
+
+/**
+ * Enviar recordatorios 3 DÍAS ANTES del evento (a la hora del evento)
+ * Debe ejecutarse cada hora para captar el momento exacto
+ * Notifica SOLO a participantes confirmados
+ */
+async function enviarRecordatorios3Dias() {
+  try {
+    console.log('📧 Procesando recordatorios 3 días antes...');
+    
+    const ahora = new Date();
+    
+    // Calcular fecha de hace 3 días
+    const en3Dias = new Date(ahora);
+    en3Dias.setDate(en3Dias.getDate() + 3);
+    const fechaEn3Dias = en3Dias.toISOString().split('T')[0]; // YYYY-MM-DD
+    
+    // Obtener eventos de dentro de 3 días
+    const eventos = await getFromFirestoreWhere('eventos', 'fecha', '==', fechaEn3Dias);
+    
+    if (!eventos || eventos.length === 0) {
+      console.log('No hay eventos programados para dentro de 3 días');
+      return 0;
+    }
+    
+    console.log(`Encontrados ${eventos.length} eventos para dentro de 3 días (${fechaEn3Dias})`);
+    let notificacionesEnviadas = 0;
+    
+    for (const evento of eventos) {
+      try {
+        const participantes = evento.participantes || [];
+        if (participantes.length === 0) {
+          console.log(`⏭️ Evento "${evento.titulo}" sin participantes`);
+          continue;
+        }
+        
+        // Calcular hora exacta del evento (dentro de 3 días)
+        const fechaEvento = crearFechaLocal(evento.fecha, evento.hora);
+        if (!fechaEvento) {
+          console.log(`⏭️ Evento "${evento.titulo}" sin hora válida`);
+          continue;
+        }
+        
+        // Calcular diferencia en horas
+        const diferencia = fechaEvento.getTime() - ahora.getTime();
+        const horasHastaEvento = diferencia / (1000 * 60 * 60);
+        
+        // Verificar si estamos en la ventana de 72 horas (entre 71.5 y 72.5 horas = ~3 días)
+        if (horasHastaEvento < 71.5 || horasHastaEvento > 72.5) {
+          continue;
+        }
+        
+        console.log(`🎯 Evento "${evento.titulo}" en exactamente ~3 días (${horasHastaEvento.toFixed(1)}h)`);
+        
+        // Notificar a participantes
+        for (const participanteId of participantes) {
+          try {
+            const participante = await getFromFirestoreById('usuarios', participanteId);
+            if (!participante) continue;
+            
+            const email = participante.email || participante.destino;
+            if (!email || !email.includes('@')) continue;
+            
+            // Evitar duplicados (ventana de 20 horas)
+            const duplicada = await fueNotificadaRecientemente(
+              participanteId,
+              evento.id,
+              TIPO_NOTIF.RECORDATORIO_3DIAS,
+              20
+            );
+            if (duplicada) continue;
+            
+            const nombreCompleto = `${participante.nombre || ''} ${participante.apellido || ''}`.trim() || 'Usuario';
+            
+            await loadEmailJS();
+            
+            const templateParams = {
+              to_email: email,
+              to_name: nombreCompleto,
+              user_name: nombreCompleto,
+              subject: sinAcentos(`Recordatorio: ${evento.titulo} en 3 dias`),
+              message: `Este es un recordatorio de que estás inscrito/a en el evento "${evento.titulo}" que se realizará dentro de 3 días. ¡Te esperamos!`,
+              event_name: evento.titulo || 'Sin título',
+              event_date: formatearFechaArgentina(evento.fecha) || 'No especificada',
+              event_time: formatearHoraArgentina(evento.hora) || 'No especificada',
+              event_location: evento.ubicacion || evento.lugar || 'No especificado',
+              event_description: evento.descripcion || 'Sin descripción'
+            };
+            
+            await emailjs.send(
+              EMAILJS_CONFIG.SERVICE_ID,
+              EMAILJS_CONFIG.TEMPLATE_ID_RECORDATORIO,
+              templateParams
+            );
+            
+            await marcarNotificacionEnviada(participanteId, evento.id, TIPO_NOTIF.RECORDATORIO_3DIAS);
+            notificacionesEnviadas++;
+            console.log(`✅ Recordatorio 3 días enviado a ${email} para ${evento.titulo}`);
+            
+            // Pausa para no saturar EmailJS
+            await new Promise(resolve => setTimeout(resolve, 500));
+          } catch (error) {
+            console.error(`Error enviando a ${participanteId}:`, error);
+          }
+        }
+      } catch (error) {
+        console.error(`Error procesando evento ${evento.titulo}:`, error);
+      }
+    }
+    
+    console.log(`✅ Recordatorios 3 días antes: ${notificacionesEnviadas} enviados`);
+    return notificacionesEnviadas;
+  } catch (error) {
+    console.error('❌ Error en enviarRecordatorios3Dias:', error);
+    return 0;
+  }
+}
+
+/**
+ * Notificar cupos disponibles 3 HORAS antes del evento
+ * Debe ejecutarse cada hora
+ * Solo notifica si quedan lugares disponibles
+ */
+async function notificarCuposDisponibles3HorasAntes() {
+  try {
+    console.log('📧 Procesando notificaciones de cupos disponibles (3h antes)...');
+    
+    const ahora = new Date();
+    const hoy = ahora.toISOString().split('T')[0]; // YYYY-MM-DD
+    
+    // Obtener todos los eventos de hoy
+    const eventosHoy = await getFromFirestoreWhere('eventos', 'fecha', '==', hoy);
+    
+    if (!eventosHoy || eventosHoy.length === 0) {
+      console.log('No hay eventos para hoy');
+      return 0;
+    }
+    
+    console.log(`Encontrados ${eventosHoy.length} eventos para hoy`);
+    let notificacionesEnviadas = 0;
+    
+    for (const evento of eventosHoy) {
+      try {
+        // Calcular hora exacta del evento
+        const fechaEvento = crearFechaLocal(evento.fecha, evento.hora);
+        if (!fechaEvento) {
+          console.log(`⏭️ Evento "${evento.titulo}" sin hora válida`);
+          continue;
+        }
+        
+        // Calcular diferencia en milisegundos
+        const diferencia = fechaEvento.getTime() - ahora.getTime();
+        const horasHastaEvento = diferencia / (1000 * 60 * 60);
+        
+        // Verificar si está en la ventana de 3 horas (entre 2.9 y 3.1 horas = ventana de 12 min)
+        // Ventana estrecha para evitar envíos duplicados en ejecuciones consecutivas del cron
+        if (horasHastaEvento < 2.9 || horasHastaEvento > 3.1) {
+          continue;
+        }
+        
+        // Verificar si hay cupos disponibles
+        const participantes = evento.participantes || [];
+        const maxPersonas = evento.maxPersonas || 999;
+        const cuposDisponibles = maxPersonas - participantes.length;
+        
+        if (cuposDisponibles <= 0) {
+          console.log(`⏭️ Evento "${evento.titulo}" sin cupos disponibles (${participantes.length}/${maxPersonas})`);
+          continue;
+        }
+        
+        console.log(`🎯 Evento "${evento.titulo}" tiene ${cuposDisponibles} cupos disponibles (en ${horasHastaEvento.toFixed(1)}h)`);
+        
+        // Obtener TODOS los usuarios (no solo participantes)
+        const todosUsuarios = await getFromFirestore('usuarios');
+        if (!todosUsuarios || todosUsuarios.length === 0) continue;
+        
+        for (const usuario of todosUsuarios) {
+          try {
+            // Saltar si ya es participante
+            if (participantes.includes(usuario.id)) continue;
+            
+            const email = usuario.email || usuario.destino;
+            if (!email || !email.includes('@')) continue;
+            
+            // Evitar duplicados (ventana de 4 horas para esta notificación)
+            const duplicada = await fueNotificadaRecientemente(
+              usuario.id,
+              evento.id,
+              TIPO_NOTIF.EVENTO_DISPONIBLE,
+              4
+            );
+            if (duplicada) continue;
+            
+            const nombreCompleto = `${usuario.nombre || ''} ${usuario.apellido || ''}`.trim() || 'Usuario';
+            
+            await loadEmailJS();
+            
+            const templateParams = {
+              to_email: email,
+              to_name: nombreCompleto,
+              user_name: nombreCompleto,
+              subject: sinAcentos(`¡Ultimos ${cuposDisponibles} cupos! ${evento.titulo} en 3 horas`),
+              message: `¡Atención! El evento "${evento.titulo}" comienza en 3 horas y todavía quedan ${cuposDisponibles} lugares disponibles. ¡No te lo pierdas!`,
+              event_name: evento.titulo || 'Sin título',
+              event_date: formatearFechaArgentina(evento.fecha) || 'No especificada',
+              event_time: formatearHoraArgentina(evento.hora) || 'No especificada',
+              event_location: evento.ubicacion || evento.lugar || 'No especificado',
+              event_description: evento.descripcion || 'Sin descripción'
+            };
+            
+            await emailjs.send(
+              EMAILJS_CONFIG.SERVICE_ID,
+              EMAILJS_CONFIG.TEMPLATE_ID_RECORDATORIO,
+              templateParams
+            );
+            
+            await marcarNotificacionEnviada(usuario.id, evento.id, TIPO_NOTIF.EVENTO_DISPONIBLE);
+            notificacionesEnviadas++;
+            console.log(`✅ Notificación de cupos enviada a ${email} para ${evento.titulo}`);
+            
+            // Pausa para no saturar EmailJS
+            await new Promise(resolve => setTimeout(resolve, 500));
+          } catch (error) {
+            console.error(`Error enviando a ${usuario.id}:`, error);
+          }
+        }
+      } catch (error) {
+        console.error(`Error procesando evento ${evento.titulo}:`, error);
+      }
+    }
+    
+    console.log(`✅ Notificaciones de cupos disponibles: ${notificacionesEnviadas} enviadas`);
+    return notificacionesEnviadas;
+  } catch (error) {
+    console.error('❌ Error en notificarCuposDisponibles3HorasAntes:', error);
+    return 0;
+  }
+}
+
+/**
+ * Enviar recordatorios el DÍA DEL EVENTO (por la mañana)
+ * Debe ejecutarse cada hora para captar eventos del día
+ */
+async function enviarRecordatoriosDiaDelEvento() {
+  try {
+    console.log('📧 Procesando recordatorios del día del evento...');
+    
+    const ahora = new Date();
+    const hoy = ahora.toISOString().split('T')[0]; // YYYY-MM-DD
+    const horaActual = ahora.getHours();
+    
+    // Ejecutar a las 04:00 AM preferentemente, pero también permitir en otros horarios
+    // si es la primera vez que se ejecuta hoy (para testing y casos donde no se ejecutó a las 4 AM)
+    const ejecutarAhora = horaActual === 4 || horaActual >= 8; // 4 AM o después de las 8 AM
+    
+    if (!ejecutarAhora) {
+      console.log(`⏭️ Fuera del horario de envío (04:00 AM o después de 08:00 AM). Hora actual: ${horaActual}:00`);
+      return;
+    }
+    
+    // Obtener todos los eventos de hoy
+    const eventos = await getFromFirestoreWhere('eventos', 'fecha', '==', hoy);
+    
+    if (!eventos || eventos.length === 0) {
+      console.log('No hay eventos programados para hoy');
+      return;
+    }
+    
+    console.log(`Encontrados ${eventos.length} eventos para hoy`);
+    
+    for (const evento of eventos) {
+      const participantes = evento.participantes || evento.usuariosUnidos || [];
+      
+      if (participantes.length === 0) continue;
+      
+      // Solo enviar si aún no se envió (verificar si el evento ya pasó)
+      const fechaEvento = crearFechaLocal(evento.fecha, evento.hora);
+      if (!fechaEvento || fechaEvento.getTime() < ahora.getTime()) {
+        continue; // Evento ya pasó
+      }
+      
+      // Enviar recordatorio a cada participante
+      for (const userId of participantes) {
+        try {
+          const usuario = await getFromFirestore('usuarios', userId);
+          if (!usuario) continue;
+          
+          const email = usuario.email || usuario.destino;
+          if (!email || !email.includes('@')) continue;
+          
+          const nombreCompleto = `${usuario.nombre || ''} ${usuario.apellido || ''}`.trim() || 'Usuario';
+          // Evitar duplicados en la última 20h para el día del evento
+          const duplicada = await fueNotificadaRecientemente(userId, evento.id, TIPO_NOTIF.RECORDATORIO_DIA, 20);
+          if (duplicada) { console.log(`⏭️ Ya se envió DÍA a ${userId} para ${evento.titulo}`); continue; }
+          
+          await loadEmailJS();
+          
+          const templateParams = {
+            to_email: email,
+            to_name: nombreCompleto,
+            user_name: nombreCompleto,
+            subject: sinAcentos(`¡Hoy es el dia! ${evento.titulo}`),
+            message: `Hoy es el día de tu evento. ¡Prepárate y diviértete!`,
+            event_name: evento.titulo || 'Sin título',
+            event_date: formatearFechaArgentina(evento.fecha) || 'No especificada',
+            event_time: formatearHoraArgentina(evento.hora) || 'No especificada',
+            event_location: evento.ubicacion || evento.lugar || 'No especificado',
+            event_description: evento.descripcion || 'Sin descripción'
+          };
+          
+          await emailjs.send(
+            EMAILJS_CONFIG.SERVICE_ID,
+            EMAILJS_CONFIG.TEMPLATE_ID_RECORDATORIO,
+            templateParams
+          );
+          
+          console.log(`✅ Recordatorio día del evento enviado a ${email}`);
+          await marcarNotificacionEnviada(userId, evento.id, TIPO_NOTIF.RECORDATORIO_DIA);
+          
+          await new Promise(resolve => setTimeout(resolve, 500));
+        } catch (error) {
+          console.error(`Error enviando recordatorio día evento a usuario ${userId}:`, error);
+        }
+      }
+    }
+    
+    console.log('✅ Recordatorios día del evento procesados');
+  } catch (error) {
+    console.error('❌ Error en enviarRecordatoriosDiaDelEvento:', error);
+  }
+}
+
+/**
+ * Notificar a TODOS los usuarios sobre eventos con cupos disponibles HOY
+ * Ejecutar una vez por día (por la mañana)
+ */
+async function notificarEventosDisponiblesHoy() {
+  try {
+    console.log('📧 Notificando eventos con cupos disponibles hoy...');
+    
+    const ahora = new Date();
+    const hoy = ahora.toISOString().split('T')[0]; // YYYY-MM-DD
+    
+    // Obtener todos los eventos de hoy
+    const eventosHoy = await getFromFirestoreWhere('eventos', 'fecha', '==', hoy);
+    
+    if (!eventosHoy || eventosHoy.length === 0) {
+      console.log('No hay eventos programados para hoy');
+      return;
+    }
+    
+    // Filtrar solo eventos con cupos disponibles
+    const eventosDisponibles = eventosHoy.filter(evento => {
+      const participantes = evento.participantes || evento.usuariosUnidos || [];
+      const maxPersonas = Number(evento.maxPersonas || 0);
+      return participantes.length < maxPersonas;
+    });
+    
+    if (eventosDisponibles.length === 0) {
+      console.log('No hay eventos con cupos disponibles hoy');
+      return;
+    }
+    
+    console.log(`${eventosDisponibles.length} eventos con cupos disponibles hoy`);
+    
+    // Obtener todos los usuarios
+    const todosUsuarios = await getFromFirestore('usuarios');
+    
+    if (!todosUsuarios || todosUsuarios.length === 0) {
+      console.log('No hay usuarios en la base de datos');
+      return;
+    }
+    
+    // Enviar notificación a cada usuario sobre cada evento disponible
+    for (const evento of eventosDisponibles) {
+      const participantes = evento.participantes || evento.usuariosUnidos || [];
+      const cuposDisponibles = Number(evento.maxPersonas || 0) - participantes.length;
+      
+      for (const usuario of todosUsuarios) {
+        // Saltar si ya está participando o es el organizador
+        if (participantes.includes(usuario.id) || usuario.id === evento.organizadorId) {
+          continue;
+        }
+        
+        const email = usuario.email || usuario.destino;
+        if (!email || !email.includes('@')) continue;
+        
+        const nombreCompleto = `${usuario.nombre || ''} ${usuario.apellido || ''}`.trim() || 'Usuario';
+        // No notificar si el evento ya pasó
+        const fechaEvt = crearFechaLocal(evento.fecha, evento.hora);
+        if (!fechaEvt || fechaEvt.getTime() <= Date.now()) { continue; }
+        // Evitar duplicado en últimas 10h
+        const duplicada = await fueNotificadaRecientemente(usuario.id, evento.id, TIPO_NOTIF.EVENTO_DISPONIBLE, 10);
+        if (duplicada) { console.log(`⏭️ Ya se notificó evento_disponible a ${usuario.id} para ${evento.titulo}`); continue; }
+        
+        try {
+          await loadEmailJS();
+          
+          const templateParams = {
+            to_email: email,
+            to_name: nombreCompleto,
+            user_name: nombreCompleto,
+            subject: sinAcentos(`¡Evento HOY con ${cuposDisponibles} lugares disponibles! ${evento.titulo}`),
+            message: `Todavía hay ${cuposDisponibles} lugares disponibles para este evento que ocurre HOY. ¡No te lo pierdas!`,
+            event_name: evento.titulo || 'Sin título',
+            event_date: `Hoy - ${formatearFechaArgentina(evento.fecha)}` || 'Hoy',
+            event_time: formatearHoraArgentina(evento.hora) || 'No especificada',
+            event_location: evento.ubicacion || evento.lugar || 'No especificado',
+            event_description: evento.descripcion || 'Sin descripción'
+          };
+          
+          await emailjs.send(
+            EMAILJS_CONFIG.SERVICE_ID,
+            EMAILJS_CONFIG.TEMPLATE_ID_RECORDATORIO,
+            templateParams
+          );
+          
+          console.log(`✅ Notificación de cupos disponibles enviada a ${email}`);
+          await marcarNotificacionEnviada(usuario.id, evento.id, TIPO_NOTIF.EVENTO_DISPONIBLE);
+          
+          // Pausa más larga para no saturar (muchos envíos)
+          await new Promise(resolve => setTimeout(resolve, 1000));
+        } catch (error) {
+          console.error(`Error notificando cupos a usuario ${usuario.id}:`, error);
+        }
+      }
+    }
+    
+    console.log('✅ Notificaciones de eventos disponibles procesadas');
+  } catch (error) {
+    console.error('❌ Error en notificarEventosDisponiblesHoy:', error);
+  }
+}
+
+/**
+ * Notificar a participantes cuando el organizador edita el evento
+ * Esta función se llama manualmente cuando se guarda un evento editado
+ */
+async function notificarEdicionEvento(eventoId, cambiosRealizados = '') {
+  try {
+    console.log('📧 Notificando edición de evento...');
+    
+    const evento = await getFromFirestore('eventos', eventoId);
+    
+    if (!evento) {
+      console.error('Evento no encontrado');
+      return false;
+    }
+    
+    const participantes = evento.participantes || evento.usuariosUnidos || [];
+    
+    if (participantes.length === 0) {
+      console.log('No hay participantes para notificar');
+      return false;
+    }
+    
+    // Enviar notificación a cada participante (con anti-duplicados)
+    for (const userId of participantes) {
+      try {
+        const usuario = await getFromFirestore('usuarios', userId);
+        if (!usuario) continue;
+        
+        const email = usuario.email || usuario.destino;
+        if (!email || !email.includes('@')) continue;
+        
+        // Anti-duplicados: evitar spam pero permitir notificaciones razonables (10 min)
+        const duplicada = await fueNotificadaRecientemente(userId, eventoId, TIPO_NOTIF.EVENTO_EDITADO, 0.16);
+        if (duplicada) {
+          console.log(`⏭️ Ya se notificó edición a ${userId} para ${evento.titulo} (últimos 10 min)`);
+          continue;
+        }
+        
+        const nombreCompleto = `${usuario.nombre || ''} ${usuario.apellido || ''}`.trim() || 'Usuario';
+        
+        await loadEmailJS();
+        
+        const mensajeCambios = cambiosRealizados 
+          ? `El organizador realizó cambios: ${cambiosRealizados}` 
+          : 'El organizador actualizó la información del evento.';
+        
+        const templateParams = {
+          to_email: email,
+          to_name: nombreCompleto,
+          user_name: nombreCompleto,
+          subject: sinAcentos(`Actualizacion: Se edito el evento "${evento.titulo}"`),
+          message: `${mensajeCambios} Te compartimos la información actualizada:`,
+          event_name: evento.titulo || 'Sin título',
+          event_date: formatearFechaArgentina(evento.fecha) || 'No especificada',
+          event_time: formatearHoraArgentina(evento.hora) || 'No especificada',
+          event_location: evento.ubicacion || evento.lugar || 'No especificado',
+          event_description: evento.descripcion || 'Sin descripción'
+        };
+        
+        await emailjs.send(
+          EMAILJS_CONFIG.SERVICE_ID,
+          EMAILJS_CONFIG.TEMPLATE_ID_RECORDATORIO,
+          templateParams
+        );
+        
+        console.log(`✅ Notificación de edición enviada a ${email}`);
+        
+        // Marcar como enviada
+        await marcarNotificacionEnviada(userId, eventoId, TIPO_NOTIF.EVENTO_EDITADO);
+        
+        await new Promise(resolve => setTimeout(resolve, 500));
+      } catch (error) {
+        console.error(`Error notificando edición a usuario ${userId}:`, error);
+      }
+    }
+    
+    console.log('✅ Notificaciones de edición procesadas');
+    return true;
+  } catch (error) {
+    console.error('❌ Error en notificarEdicionEvento:', error);
+    return false;
+  }
+}
+
 /**
  * Iniciar sistema de notificaciones (ejecutar recordatorios)
  * En producción, esto debería ser una Cloud Function con cron job
  */
 function iniciarSistemaNotificaciones() {
-  // Ejecutar al iniciar
-  generarRecordatoriosDiarios();
+  // ===== RECORDATORIOS A PARTICIPANTES =====
+  // 3 días antes (a la hora del evento, chequeo cada hora)
+  enviarRecordatorios3Dias();
+  setInterval(enviarRecordatorios3Dias, 60 * 60 * 1000);
   
-  // Ejecutar cada 24 horas (86400000 ms)
-  // Para desarrollo, puedes usar 1 hora (3600000)
-  setInterval(generarRecordatoriosDiarios, 86400000);
-  
-  console.log('Sistema de notificaciones iniciado');
+  // Día del evento (chequeo cada hora, envío sólo a las 04:00 AM)
+  enviarRecordatoriosDiaDelEvento();
+  setInterval(enviarRecordatoriosDiaDelEvento, 60 * 60 * 1000);
+
+  // ===== NOTIFICACIONES A TODOS LOS USUARIOS =====
+  // Cupos disponibles 3 horas antes (chequeo cada hora)
+  notificarCuposDisponibles3HorasAntes();
+  setInterval(notificarCuposDisponibles3HorasAntes, 60 * 60 * 1000);
+
+  // Log actualizado
+  console.log('✅ Sistema de notificaciones completo iniciado:');
+  console.log('   - Recordatorios 3 dias antes (a la hora del evento, a participantes)');
+  console.log('   - Recordatorios dia del evento (04:00 AM a participantes)');
+  console.log('   - Cupos disponibles 3h antes (a todos los usuarios si hay lugares)');
+  console.log('   - Notificaciones de edicion (manual al editar)');
 }
+
+/**
+ * Ejecuta el proceso de cron (para cron-notifications.html)
+ * Usa las funciones existentes y escribe logs en consola y en el DOM si existe #log/#status
+ */
+function _cronAddLog(message, type = 'info') {
+  try {
+    const logDiv = document.getElementById('log');
+    if (logDiv) {
+      const entry = document.createElement('div');
+      entry.className = `log-entry ${type}`;
+      const timestamp = new Date().toLocaleTimeString('es-AR');
+      entry.textContent = `[${timestamp}] ${message}`;
+      logDiv.appendChild(entry);
+      logDiv.scrollTop = logDiv.scrollHeight;
+    }
+  } catch {}
+  const level = type === 'error' ? 'error' : 'log';
+  console[level](`${type === 'error' ? '❌' : type === 'success' ? '✅' : 'ℹ️'} ${message}`);
+}
+
+window.ejecutarCronNotificaciones = async function ejecutarCronNotificaciones() {
+  try {
+    _cronAddLog('🚀 Iniciando proceso de notificaciones automáticas...', 'info');
+    _cronAddLog(`📅 Fecha: ${new Date().toLocaleDateString('es-AR')}`, 'info');
+    _cronAddLog(`🕐 Hora: ${new Date().toLocaleTimeString('es-AR')}`, 'info');
+
+    const total3Dias = await enviarRecordatorios3Dias();
+    const totalCupos = await notificarCuposDisponibles3HorasAntes();
+    const totalDia = await enviarRecordatoriosDiaDelEvento();
+    const total = (Number(total3Dias) || 0) + (Number(totalCupos) || 0) + (Number(totalDia) || 0);
+
+    _cronAddLog(`🎉 Proceso completado: ${total} emails enviados (3 días: ${total3Dias} | cupos 3h: ${totalCupos} | día: ${totalDia})`, 'success');
+
+    const statusEl = document.getElementById('status');
+    if (statusEl) {
+      statusEl.innerHTML = `
+        <strong>✅ Proceso completado exitosamente</strong><br>
+        <small>Total de notificaciones enviadas: ${total}</small><br>
+        <small>Recordatorios 3 días antes: ${total3Dias}</small><br>
+        <small>Cupos disponibles (3h antes): ${totalCupos}</small><br>
+        <small>Recordatorios del día (4 AM): ${totalDia}</small><br>
+        <small>Hora de ejecución: ${new Date().toLocaleTimeString('es-AR')}</small>
+      `;
+    }
+  } catch (error) {
+    _cronAddLog(`Error en cron: ${error?.message || error}`, 'error');
+    const statusEl = document.getElementById('status');
+    if (statusEl) {
+      statusEl.innerHTML = `
+        <strong>❌ Error en el proceso</strong><br>
+        <small>${error?.message || error}</small>
+      `;
+    }
+  }
+};
 
 // ==============================
 // Helpers DOM
@@ -753,8 +1863,8 @@ const enviarCodigoEmail = async (email, codigo) => {
       verification_code: codigo,
       codigo: codigo,
       code: codigo,
-      subject: 'Código de verificación',
-      app_name: 'Activá'
+      subject: 'Codigo de verificacion',
+      app_name: 'Activa'
     };
     const result = await emailjs.send(EMAILJS_CONFIG.SERVICE_ID, EMAILJS_CONFIG.TEMPLATE_ID, params);
     return { success: true, result };
@@ -780,7 +1890,7 @@ const mostrarToast = (mensaje, tipo = 'exito') => {
   div.textContent = mensaje;
   const base = `
     position: fixed;
-    bottom: 20px;
+    bottom: 24px;
     left: 50%;
     transform: translateX(-50%);
     padding: 15px 25px;
@@ -805,10 +1915,18 @@ const mostrarToast = (mensaje, tipo = 'exito') => {
   }
   document.body.appendChild(div);
   setTimeout(() => {
-    div.style.animation = 'slideDown 0.3s ease-out';
-    setTimeout(() => div.remove(), 300);
-  }, 4000);
+    div.style.animation = 'slideDown 0.25s ease-in forwards';
+    setTimeout(() => div.remove(), 250);
+  }, tipo === 'exito' ? 2200 : 3000);
 };
+
+// Reemplazar alert nativo por nuestro toast estilizado
+try {
+  window.alert = (msg) => {
+    const texto = typeof msg === 'string' ? msg : String(msg ?? 'Aviso');
+    mostrarToast(texto, 'error');
+  };
+} catch {}
 const mostrarMensajeExito = (msg) => mostrarToast(msg, 'exito');
 const mostrarMensajeError = (msg) => mostrarToast(msg, 'error');
 
@@ -1328,17 +2446,17 @@ document.addEventListener("DOMContentLoaded", async () => {
         const password2 = document.getElementById("password2") ? document.getElementById("password2").value : "";
         
         if (!nombre || !apellido || !edad || !sexo || !password) {
-          alert("Por favor, completa todos los campos.");
+          mostrarToast("Por favor, completá todos los campos.", 'error');
           return;
         }
         
         if (password !== password2) {
-          alert("Las contraseñas no coinciden.");
+          mostrarToast("Las contraseñas no coinciden.", 'error');
           return;
         }
         
         if (password.length < 6) {
-          alert("La contraseña debe tener al menos 6 caracteres.");
+          mostrarToast("La contraseña debe tener al menos 6 caracteres.", 'error');
           return;
         }
         
@@ -1381,6 +2499,226 @@ document.addEventListener("DOMContentLoaded", async () => {
     const perfilForm = $("#perfil-form");
     const btnEditarPerfil = $("#btn-editar-perfil");
     const btnCancelarPerfil = $("#btn-cancelar-perfil");
+    
+    // Migración automática: sincronizar perfiles a usuarios (ejecutar una sola vez)
+    const migrarPerfilAUsuario = async () => {
+      try {
+        // Verificar si ya se ejecutó la migración
+        const migracionKey = 'migracion_perfil_usuario_v1';
+        if (localStorage.getItem(migracionKey)) {
+          console.log('✅ Migración ya ejecutada previamente');
+          return;
+        }
+        
+        console.log('🔄 Iniciando migración de perfiles a usuarios...');
+        
+        // Obtener todos los perfiles
+        const perfiles = await getFromFirestore('perfiles');
+        
+        if (!perfiles || perfiles.length === 0) {
+          console.log('No hay perfiles para migrar');
+          localStorage.setItem(migracionKey, 'true');
+          return;
+        }
+        
+        console.log(`📋 Encontrados ${perfiles.length} perfiles para migrar`);
+        
+        let migrados = 0;
+        let errores = 0;
+        
+        // Migrar cada perfil
+        for (const perfil of perfiles) {
+          try {
+            const userId = perfil.id;
+            
+            // Verificar que el usuario existe
+            const usuario = await getFromFirestore('usuarios', userId);
+            if (!usuario) {
+              console.warn(`⚠️ Usuario ${userId} no existe, saltando...`);
+              continue;
+            }
+            
+            // Preparar datos a actualizar
+            const datosActualizados = {};
+            if (perfil.nombre) datosActualizados.nombre = perfil.nombre;
+            if (perfil.apellido) datosActualizados.apellido = perfil.apellido;
+            if (perfil.edad !== undefined) datosActualizados.edad = perfil.edad;
+            if (perfil.sexo) datosActualizados.sexo = perfil.sexo;
+            if (perfil.descripcion) datosActualizados.descripcion = perfil.descripcion;
+            if (perfil.foto) datosActualizados.foto = perfil.foto;
+            
+            // Solo actualizar si hay datos para migrar
+            if (Object.keys(datosActualizados).length > 0) {
+              await saveToFirestore('usuarios', datosActualizados, userId);
+              migrados++;
+              console.log(`✅ Migrado perfil de usuario ${userId}: ${perfil.nombre} ${perfil.apellido}`);
+            }
+            
+            // Pequeña pausa para no saturar Firestore
+            await new Promise(resolve => setTimeout(resolve, 100));
+          } catch (error) {
+            errores++;
+            console.error(`❌ Error migrando perfil ${perfil.id}:`, error);
+          }
+        }
+        
+        console.log(`🎉 Migración completada: ${migrados} perfiles migrados, ${errores} errores`);
+        
+        // Marcar migración como completada
+        localStorage.setItem(migracionKey, 'true');
+        
+        if (migrados > 0) {
+          mostrarMensajeExito(`Sincronización completada: ${migrados} perfiles actualizados`);
+        }
+      } catch (error) {
+        console.error('❌ Error en migración automática:', error);
+      }
+    };
+    
+    // Exponer función global para ejecución manual desde consola
+    window.ejecutarMigracionPerfiles = async () => {
+      localStorage.removeItem('migracion_perfil_usuario_v1');
+      await migrarPerfilAUsuario();
+    };
+    
+    // Ejecutar migración si estamos en la página de perfil
+    if (document.getElementById('perfil-container') || document.getElementById('perfil-form')) {
+      // Ejecutar después de un pequeño delay para no bloquear la carga de la página
+      setTimeout(() => {
+        migrarPerfilAUsuario();
+      }, 2000);
+    }
+    
+    // Migración de eventos: normalizar campo ubicacion
+    const migrarEventosUbicacion = async () => {
+      try {
+        const migracionKey = 'migracion_eventos_ubicacion_v1';
+        if (localStorage.getItem(migracionKey)) {
+          console.log('✅ Migración de eventos ya ejecutada');
+          return;
+        }
+        
+        console.log('🔄 Normalizando campo ubicacion en eventos...');
+        
+        const eventos = await getFromFirestore('eventos');
+        if (!eventos || eventos.length === 0) {
+          localStorage.setItem(migracionKey, 'true');
+          return;
+        }
+        
+        let actualizados = 0;
+        for (const evento of eventos) {
+          try {
+            // Si tiene 'lugar' pero no 'ubicacion', copiar
+            if (evento.lugar && !evento.ubicacion) {
+              await saveToFirestore('eventos', { ubicacion: evento.lugar }, evento.id);
+              actualizados++;
+              console.log(`✅ Normalizado evento ${evento.id}: ${evento.lugar}`);
+            }
+            await new Promise(resolve => setTimeout(resolve, 100));
+          } catch (error) {
+            console.error(`Error normalizando evento ${evento.id}:`, error);
+          }
+        }
+        
+        console.log(`🎉 Migración de eventos completada: ${actualizados} actualizados`);
+        localStorage.setItem(migracionKey, 'true');
+        
+        if (actualizados > 0) {
+          mostrarMensajeExito(`${actualizados} eventos actualizados con ubicacion normalizada`);
+        }
+      } catch (error) {
+        console.error('❌ Error en migración de eventos:', error);
+      }
+    };
+    
+    // Ejecutar migración de eventos en cualquier página después de cargar
+    setTimeout(() => {
+      migrarEventosUbicacion();
+    }, 3000);
+
+    // Ejecutar migración de perfiles -> usuarios en cualquier página (una sola vez)
+    // Esto asegura que, aunque no entres a perfil.html, la sincronización masiva ocurra.
+    setTimeout(() => {
+      migrarPerfilAUsuario();
+    }, 4000);
+
+    // Sincronizar automáticamente: copiar datos del perfil -> usuarios para el usuario logueado
+    const sincronizarUsuarioDesdePerfilActual = async () => {
+      try {
+        const userId = localStorage.getItem('currentUserId') || localStorage.getItem('userId');
+        if (!userId) return;
+
+        const perfil = await getFromFirestore('perfiles', userId);
+        if (!perfil) {
+          console.log('ℹ️ No hay perfil para sincronizar');
+          return;
+        }
+
+        const usuario = await getFromFirestore('usuarios', userId);
+
+        const updates = {};
+        const copiarSiCambia = (campo) => {
+          if (perfil[campo] !== undefined && perfil[campo] !== null) {
+            if (!usuario || usuario[campo] !== perfil[campo]) {
+              updates[campo] = perfil[campo];
+            }
+          }
+        };
+
+        copiarSiCambia('nombre');
+        copiarSiCambia('apellido');
+        copiarSiCambia('sexo');
+        copiarSiCambia('descripcion');
+        copiarSiCambia('foto');
+        if (typeof perfil.edad === 'number' && (!usuario || usuario.edad !== perfil.edad)) {
+          updates.edad = perfil.edad;
+        }
+
+        if (Object.keys(updates).length > 0) {
+          updates.fechaActualizacion = new Date().toISOString();
+          await saveToFirestore('usuarios', updates, userId);
+          console.log(`✅ Usuario sincronizado desde perfil (${userId})`, updates);
+        } else {
+          console.log('ℹ️ Usuario ya estaba sincronizado con el perfil');
+        }
+      } catch (e) {
+        console.error('❌ Error al sincronizar usuario desde perfil:', e);
+      }
+    };
+
+    // Ejecutar sincronización del usuario actual poco después de cargar cualquier página
+    setTimeout(() => {
+      sincronizarUsuarioDesdePerfilActual();
+    }, 1500);
+
+    // Exponer función global para forzar sincronización manual desde consola
+    window.forzarSyncUsuario = async () => {
+      await sincronizarUsuarioDesdePerfilActual();
+    };
+
+    // Exponer sync por ID específico: copia perfil -> usuarios para el doc indicado
+    window.syncUsuarioPorId = async (id) => {
+      try {
+        if (!id) { console.warn('Debe especificar un ID de usuario (docId en Firestore)'); return; }
+        const perfil = await getFromFirestore('perfiles', id);
+        if (!perfil) { console.warn(`No existe perfil con id ${id}`); return; }
+        const updates = {};
+        if (perfil.nombre) updates.nombre = perfil.nombre;
+        if (perfil.apellido) updates.apellido = perfil.apellido;
+        if (typeof perfil.edad === 'number') updates.edad = perfil.edad;
+        if (perfil.sexo) updates.sexo = perfil.sexo;
+        if (perfil.descripcion) updates.descripcion = perfil.descripcion;
+        if (perfil.foto) updates.foto = perfil.foto;
+        updates.fechaActualizacion = new Date().toISOString();
+        await saveToFirestore('usuarios', updates, id);
+        console.log(`✅ Sync manual aplicado a usuarios/${id}`, updates);
+        return true;
+      } catch (e) {
+        console.error('❌ Error en syncUsuarioPorId:', e);
+        return false;
+      }
+    };
     
     if (btnEditarPerfil && perfilForm) {
       btnEditarPerfil.addEventListener('click', (e) => {
@@ -1719,7 +3057,10 @@ document.addEventListener("DOMContentLoaded", async () => {
       
         try {
           const eventoId = await saveToFirestore('eventos', evento);
-        
+
+          // Notificar a todos los usuarios sobre el nuevo evento (excepto organizador)
+          await notificarNuevoEvento(evento, eventoId);
+
           // Guardar en el historial del usuario creador
           const historialData = {
             eventoId: eventoId,
@@ -1767,6 +3108,12 @@ document.addEventListener("DOMContentLoaded", async () => {
         return;
       }
 
+      // Usar el mismo patrón de Inicio: control de loading/vacío en el DOM
+      const loadingDiv = document.getElementById('favoritos-loading');
+      const vacioDiv = document.getElementById('favoritos-vacio');
+      if (loadingDiv) loadingDiv.style.display = 'block';
+      if (vacioDiv) vacioDiv.style.display = 'none';
+
       // Traer SOLO los favoritos del usuario (consulta indexada)
       let misFavoritos = [];
       try {
@@ -1805,10 +3152,16 @@ document.addEventListener("DOMContentLoaded", async () => {
       }
 
       if (!misFavoritos.length) {
-        favoritosLista.innerHTML = "<p style='text-align:center;'>No tienes eventos favoritos aún.</p>";
+        if (loadingDiv) loadingDiv.style.display = 'none';
+        const vacio = document.getElementById('favoritos-vacio');
+        if (vacio) vacio.style.display = 'block';
+        return;
       } else {
         // Funciones helper para formatear fecha y hora usando funciones centralizadas
+        // Limpiar contenedor conservando controles (loading/vacío)
+        const controlesFav = favoritosLista.querySelectorAll('#favoritos-loading, #favoritos-vacio');
         favoritosLista.innerHTML = '';
+        controlesFav.forEach(el => favoritosLista.appendChild(el));
         const ahora = new Date();
 
         // 1) Obtener TODOS los eventos favoritos en paralelo
@@ -1901,10 +3254,17 @@ document.addEventListener("DOMContentLoaded", async () => {
           favoritosLista.appendChild(card);
         }
         
-        // Mostrar mensaje si no hay eventos favoritos futuros
-        if (favoritosLista.children.length === 0) {
-          favoritosLista.innerHTML = "<p style='text-align:center;'>No tienes eventos favoritos próximos.</p>";
+        // Ocultar loading
+        if (loadingDiv) loadingDiv.style.display = 'none';
+
+        // Mostrar mensaje si no hay eventos favoritos
+        const tieneCards = Array.from(favoritosLista.children).some(el => !['FAVORITOS-LOADING','FAVORITOS-VACIO'].includes(el.id?.toUpperCase?.()))
+        if (!tieneCards) {
+          const vacio = document.getElementById('favoritos-vacio');
+          if (vacio) vacio.style.display = 'block';
         } else {
+          const vacio = document.getElementById('favoritos-vacio');
+          if (vacio) vacio.style.display = 'none';
           bindFavoritosButtons();
         }
       }
@@ -2003,7 +3363,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       
       const destino = email || phone;
       if (!destino || !password) {
-        alert("Por favor completa todos los campos.");
+        mostrarToast("Por favor, completá todos los campos.", 'error');
         return;
       }
       
@@ -2034,7 +3394,7 @@ document.addEventListener("DOMContentLoaded", async () => {
         mostrarMensajeExito('¡Bienvenido!');
         window.location.href = 'inicio.html';
       } else {
-        alert("Credenciales incorrectas.");
+        mostrarToast("Credenciales incorrectas.", 'error');
       }
     });
   }
@@ -2620,6 +3980,40 @@ document.addEventListener("DOMContentLoaded", async () => {
             };
           
             await saveToFirestore('historial', historialData, `${userId}_${eventoId}_unido`);
+          
+            // ===== ENVIAR NOTIFICACIONES POR EMAIL =====
+            console.log('📧 Iniciando envío de notificaciones por email...');
+            
+            // 1. Confirmación al usuario que se unió
+            try {
+              console.log(`📧 Enviando confirmación a usuario ${userId}...`);
+              const confirmacionEnviada = await enviarConfirmacionUnion(userId, eventoId);
+              if (confirmacionEnviada) {
+                console.log('✅ Confirmación enviada exitosamente');
+              } else {
+                console.warn('⚠️ No se pudo enviar confirmación (usuario sin email o datos faltantes)');
+              }
+            } catch (emailError) {
+              console.error('❌ Error enviando confirmación al usuario:', emailError);
+              // No bloqueamos el flujo si falla el email
+            }
+            
+            // 2. Notificar al organizador que alguien se unió
+            try {
+              console.log(`📧 Notificando al organizador ${evento.organizadorId}...`);
+              const notificacionEnviada = await notificarOrganizadorNuevoParticipante(evento.organizadorId, userId, eventoId);
+              if (notificacionEnviada) {
+                console.log('✅ Notificación al organizador enviada exitosamente');
+              } else {
+                console.warn('⚠️ No se pudo notificar al organizador (sin email o datos faltantes)');
+              }
+            } catch (emailError) {
+              console.error('❌ Error notificando al organizador:', emailError);
+              // No bloqueamos el flujo si falla el email
+            }
+            
+            console.log('📧 Proceso de notificaciones completado');
+            // ===== FIN NOTIFICACIONES =====
           
             mostrarMensajeExito(`¡Te has unido a "${evento.titulo}"!`);
 
@@ -3372,7 +4766,7 @@ document.addEventListener("DOMContentLoaded", async () => {
             <div class="estrellas-container" data-evento-id="${item.eventoId}">
               ${[1,2,3,4,5].map(i => `<span class="estrella" data-valor="${i}">★</span>`).join('')}
             </div>
-            <button class="btn-enviar-valoracion btn-base btn-primary" data-evento-id="${item.eventoId}" style="margin-top:8px;display:none;">Enviar valoración</button>
+            <button class="btn-enviar-valoracion btn-base btn-primary" data-evento-id="${item.eventoId}" style="margin-top:8px;display:none;color:#003918;">Enviar valoración</button>
             ${promedio !== null ? `<p class="promedio-texto">Promedio: ${promedio} (${cantidadVotos})</p>` : ''}
           </div>
         `;
@@ -4077,33 +5471,89 @@ document.addEventListener("DOMContentLoaded", async () => {
             
             console.log('🎉 Todas las actualizaciones completadas');
             
-            // NOTIFICAR A PARTICIPANTES SOBRE LA EDICIÓN
+            // ===== NOTIFICAR A PARTICIPANTES SOBRE LA EDICIÓN =====
             try {
-              const fechaFormateada = formatearFechaArgentina(payload.fecha);
-              const horaFormateada = formatearHoraArgentina(payload.hora);
-              const mensajeEdicion = `✏️ El evento "${payload.titulo}" ha sido MODIFICADO\n\n` +
-                `📅 Nueva fecha: ${fechaFormateada}\n` +
-                `🕐 Nueva hora: ${horaFormateada}\n` +
-                `📍 Lugar: ${payload.ubicacion}\n` +
-                `📝 Descripción: ${payload.descripcion}\n\n` +
-                `Por favor, verificá los cambios.`;
+              console.log('🔍 INICIANDO DETECCIÓN DE CAMBIOS...');
+              console.log('📋 Evento anterior:', {
+                fecha: eventoActual.fecha,
+                hora: eventoActual.hora,
+                ubicacion: eventoActual.ubicacion || eventoActual.lugar,
+                descripcion: eventoActual.descripcion?.substring(0, 30) + '...',
+                linkGrupo: eventoActual.linkGrupo,
+                maxPersonas: eventoActual.maxPersonas
+              });
+              console.log('📋 Evento nuevo:', {
+                fecha: payload.fecha,
+                hora: payload.hora,
+                ubicacion: payload.ubicacion,
+                descripcion: payload.descripcion?.substring(0, 30) + '...',
+                linkGrupo: payload.linkGrupo,
+                maxPersonas: payload.maxPersonas
+              });
               
-              await notificarParticipantes(
-                id,
-                TIPO_NOTIF.EVENTO_EDITADO,
-                mensajeEdicion,
-                { 
-                  fecha: payload.fecha, 
-                  hora: payload.hora, 
-                  lugar: payload.ubicacion,
-                  descripcion: payload.descripcion
-                }
-              );
-              console.log('📧 Notificaciones de edición enviadas');
+              // Detectar qué campos cambiaron comparando con el evento original
+              const cambios = [];
+              
+              // Normalizar valores para comparación (evitar false positives por tipos)
+              const fechaAnterior = String(eventoActual.fecha || '').trim();
+              const fechaNueva = String(payload.fecha || '').trim();
+              const horaAnterior = String(eventoActual.hora || '').trim();
+              const horaNueva = String(payload.hora || '').trim();
+              const ubicacionAnterior = String(eventoActual.ubicacion || eventoActual.lugar || '').trim();
+              const ubicacionNueva = String(payload.ubicacion || '').trim();
+              const descripcionAnterior = String(eventoActual.descripcion || '').trim();
+              const descripcionNueva = String(payload.descripcion || '').trim();
+              const linkAnterior = String(eventoActual.linkGrupo || '').trim();
+              const linkNuevo = String(payload.linkGrupo || '').trim();
+              const maxAnterior = parseInt(eventoActual.maxPersonas) || 0;
+              const maxNuevo = parseInt(payload.maxPersonas) || 0;
+              
+              console.log('🔍 Comparaciones:');
+              if (fechaAnterior !== fechaNueva) {
+                console.log(`  ✏️ FECHA cambió: "${fechaAnterior}" → "${fechaNueva}"`);
+                cambios.push(`la fecha (de ${formatearFechaArgentina(eventoActual.fecha)} a ${formatearFechaArgentina(payload.fecha)})`);
+              }
+              if (horaAnterior !== horaNueva) {
+                console.log(`  ✏️ HORA cambió: "${horaAnterior}" → "${horaNueva}"`);
+                cambios.push(`la hora (de ${formatearHoraArgentina(eventoActual.hora)} a ${formatearHoraArgentina(payload.hora)})`);
+              }
+              if (ubicacionAnterior !== ubicacionNueva) {
+                console.log(`  ✏️ UBICACIÓN cambió: "${ubicacionAnterior}" → "${ubicacionNueva}"`);
+                cambios.push(`la ubicacion (de "${ubicacionAnterior}" a "${payload.ubicacion}")`);
+              }
+              if (descripcionAnterior !== descripcionNueva) {
+                console.log(`  ✏️ DESCRIPCIÓN cambió`);
+                cambios.push('la descripcion');
+              }
+              if (linkAnterior !== linkNuevo) {
+                console.log(`  ✏️ LINK cambió: "${linkAnterior}" → "${linkNuevo}"`);
+                cambios.push('el link del grupo');
+              }
+              if (maxAnterior !== maxNuevo) {
+                console.log(`  ✏️ MAX PARTICIPANTES cambió: ${maxAnterior} → ${maxNuevo}`);
+                cambios.push(`el maximo de participantes (de ${maxAnterior} a ${maxNuevo})`);
+              }
+              
+              console.log(`📊 Total cambios detectados: ${cambios.length}`);
+              
+              // Solo enviar si hubo cambios reales
+              if (cambios.length > 0) {
+                const cambiosTexto = `Se modifico ${cambios.join(', ')}.`;
+                
+                console.log('📧 Enviando notificación con mensaje:', cambiosTexto);
+                
+                // Enviar UNA SOLA notificación por email a participantes
+                await notificarEdicionEvento(id, cambiosTexto);
+                
+                console.log('✅ Notificaciones de edición enviadas:', cambiosTexto);
+              } else {
+                console.log('ℹ️ No se detectaron cambios significativos, sin notificación');
+              }
             } catch (notifError) {
-              console.error('Error al enviar notificaciones de edición:', notifError);
-              // Continuar aunque falle la notificación
+              console.error('❌ Error enviando notificaciones de edición:', notifError);
+              // No bloqueamos el flujo si falla la notificación
             }
+            // ===== FIN NOTIFICACIONES =====
             
             mostrarMensajeExito('Evento actualizado para todos los participantes');
             cerrarModal();
