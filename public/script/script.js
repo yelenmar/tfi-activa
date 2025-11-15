@@ -106,34 +106,11 @@ const EMAILJS_CONFIG = {
   PUBLIC_KEY: '-dIDVhLNDyn8jILqB',       // Nueva Public Key provista
   SERVICE_ID: 'service_qfr7y9j',         // Nuevo servicio "Activa"
   TEMPLATE_ID: 'template_p7ka3kx',       // Nuevo template OTP
-  TEMPLATE_ID_RECORDATORIO: 'template_jnca4xh'  // Template para recordatorios de eventos
+  TEMPLATE_ID_RECORDATORIO: 'template_jnca4xh',  // Template para recordatorios de eventos
+  TEMPLATE_ID_CODIGO: 'template_codigo'  // Template unificado para códigos (recuperación y verificación)
 };
 
-/*
-============================================================
- Consolidación: Lógica equivalente a functions/index.js
-============================================================
-Este archivo concentra TODA la lógica de notificaciones en el cliente
-(sin Cloud Functions, sin plan pago). Equivalencias:
 
-- processEmailQueue              → No se usa en cliente (opcional cliente-trabajador)
-- recordatorios3Dias             → enviarRecordatorios3Dias()
-- recordatorios24Horas           → enviarRecordatorios24Horas()
-- recordatoriosDiaEvento         → enviarRecordatoriosDiaDelEvento()
-- recordatorios1Hora             → enviarRecordatorios1Hora()
-- eventosDisponiblesHoy          → notificarEventosDisponiblesHoy()
-- notificarEdicionEvento (trigger) → notificarEdicionEvento() (se invoca al guardar edición)
-- confirmacionUnion (trigger)      → enviarConfirmacionUnion() + notificarOrganizadorNuevoParticipante()
-
-Para evitar servicios pagos:
-- Todos los envíos usan EmailJS desde el navegador (EMAILJS_CONFIG)
-- Los “cron” se simulan con iniciarSistemaNotificaciones() usando setInterval
-- Si se desea coordinación entre clientes sin servidor, ver GUIA_NOTIFICACIONES_GRATIS.md
-*/
-
-// ==============================
-// Favoritos: helpers (fallback local)
-// ==============================
 const getLocalFavoritosSet = (userId) => {
   try {
     const raw = localStorage.getItem(`fav_local_${userId}`);
@@ -1722,7 +1699,119 @@ window.ejecutarCronNotificaciones = async function ejecutarCronNotificaciones() 
   }
 };
 
-// ==============================
+  // ==============================
+  // Sistema de Recuperación de Contraseña
+  // ==============================
+
+  // Almacenar códigos de verificación temporalmente (en producción usar Firestore con TTL)
+  const codigosRecuperacion = new Map(); // { email: { codigo, expira, intentos } }
+
+  /**
+   * Generar código de 6 dígitos aleatorio
+   */
+  function generarCodigoVerificacion() {
+    return Math.floor(100000 + Math.random() * 900000).toString();
+  }
+
+  /**
+   * Enviar código de recuperación por email
+   */
+  async function enviarCodigoRecuperacion(email) {
+    try {
+      // Buscar usuario por email
+      const usuarios = await getFromFirestore('usuarios');
+      const usuario = usuarios.find(u => (u.email || u.destino || '').toLowerCase() === email.toLowerCase());
+    
+      if (!usuario) {
+        throw new Error('No existe una cuenta con ese correo electrónico');
+      }
+
+      // Generar código
+      const codigo = generarCodigoVerificacion();
+      const expira = Date.now() + (15 * 60 * 1000); // Expira en 15 minutos
+    
+      // Guardar código temporalmente
+      codigosRecuperacion.set(email.toLowerCase(), {
+        codigo,
+        expira,
+        intentos: 0,
+        userId: usuario.id
+      });
+
+      // Cargar EmailJS
+    await loadEmailJS();
+
+    const nombreCompleto = `${usuario.nombre || ''} ${usuario.apellido || ''}`.trim() || 'Usuario';
+
+    // Enviar email con código de recuperación
+    const templateParams = {
+      email: email,  // Variable que usa template_p7ka3kx
+      subject: 'Codigo de recuperacion de contrasena - Activa',
+      message: `Has solicitado recuperar tu contrasena. Tu codigo de recuperacion es: ${codigo}. Este codigo expira en 15 minutos. Si no solicitaste este cambio, ignora este mensaje.`,
+      codigo: codigo,
+      tipo: 'recuperacion',
+      app_name: 'Activa'
+    };
+
+    // TEMPORAL: Usar TEMPLATE_ID hasta que se cree template_codigo en EmailJS
+    await emailjs.send(
+      EMAILJS_CONFIG.SERVICE_ID,
+      EMAILJS_CONFIG.TEMPLATE_ID, // template_p7ka3kx (temporal)
+      templateParams
+    );      console.log(`✅ Código de recuperación enviado a ${email}`);
+      return { success: true, message: 'Código enviado exitosamente' };
+    } catch (error) {
+      console.error('❌ Error enviando código:', error);
+      throw error;
+    }
+  }
+
+/**
+ * Verificar código y cambiar contraseña
+ */
+async function verificarCodigoYCambiarPassword(email, codigo, nuevaPassword) {
+  try {
+    const emailLower = email.toLowerCase();
+    const datoCodigo = codigosRecuperacion.get(emailLower);
+
+    if (!datoCodigo) {
+      throw new Error('No se encontró un código de verificación. Solicita uno nuevo.');
+    }
+
+    // Verificar expiración
+    if (Date.now() > datoCodigo.expira) {
+      codigosRecuperacion.delete(emailLower);
+      throw new Error('El código ha expirado. Solicita uno nuevo.');
+    }
+
+    // Verificar intentos
+    if (datoCodigo.intentos >= 5) {
+      codigosRecuperacion.delete(emailLower);
+      throw new Error('Demasiados intentos fallidos. Solicita un nuevo código.');
+    }
+
+    // Verificar código
+    if (datoCodigo.codigo !== codigo.trim()) {
+      datoCodigo.intentos++;
+      throw new Error(`Código incorrecto. Intentos restantes: ${5 - datoCodigo.intentos}`);
+    }
+
+    // Código correcto - actualizar contraseña en Firestore
+    if (!db) throw new Error('Firestore no inicializado');
+    await setDoc(doc(db, 'usuarios', datoCodigo.userId), {
+      password: nuevaPassword
+    }, { merge: true });
+
+    // Limpiar código usado
+    codigosRecuperacion.delete(emailLower);
+
+    console.log(`✅ Contraseña actualizada para ${email}`);
+    return { success: true, message: 'Contraseña actualizada exitosamente' };
+  } catch (error) {
+    console.error('❌ Error verificando código:', error);
+    throw error;
+  }
+}// ==============================
 // Helpers DOM
 // ==============================
 const $ = (selector) => document.querySelector(selector);
@@ -1736,7 +1825,7 @@ const DEFAULT_AVATAR = "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/20
   try {
     const path = (location.pathname || '').toLowerCase();
     const file = path.substring(path.lastIndexOf('/') + 1) || 'index.html';
-    const publicPages = ['index.html', 'login.html', 'registro.html'];
+      const publicPages = ['index.html', 'login.html', 'registro.html', 'recuperar-password.html'];
     const isProtected = !publicPages.includes(file);
     const userId = localStorage.getItem('userId') || localStorage.getItem('currentUserId');
 
@@ -1853,19 +1942,16 @@ const loadEmailJS = () => {
 const enviarCodigoEmail = async (email, codigo) => {
   try {
     await loadEmailJS();
-    // Proveer todos los aliases típicos que puede usar el template en EmailJS
+    // Parámetros para el template unificado de códigos
     const params = {
-      to_email: email,
-      email: email,
-      user_email: email,
-      reply_to: email,
-      to: email,
-      verification_code: codigo,
+      email: email,  // Variable que usa template_p7ka3kx
+      subject: 'Codigo de verificacion - Activa',
+      message: `Bienvenido a Activa! Tu codigo de verificacion es: ${codigo}. Ingresa este codigo para completar tu registro.`,
       codigo: codigo,
-      code: codigo,
-      subject: 'Codigo de verificacion',
+      tipo: 'verificacion',
       app_name: 'Activa'
     };
+    // TEMPORAL: Usar TEMPLATE_ID hasta que se cree template_codigo en EmailJS
     const result = await emailjs.send(EMAILJS_CONFIG.SERVICE_ID, EMAILJS_CONFIG.TEMPLATE_ID, params);
     return { success: true, result };
   } catch (error) {
@@ -5729,4 +5815,293 @@ document.addEventListener("DOMContentLoaded", async () => {
     iniciarSistemaNotificaciones();
   }
 
+    // ==============================
+    // PÁGINA DE RECUPERACIÓN DE CONTRASEÑA
+    // ==============================
+    const emailForm = document.getElementById('email-form');
+    const codigoForm = document.getElementById('codigo-form');
+    const stepEmail = document.getElementById('step-email');
+    const stepCodigo = document.getElementById('step-codigo');
+    const stepExito = document.getElementById('step-exito');
+    const reenviarCodigoBtn = document.getElementById('reenviar-codigo');
+  
+    if (emailForm && codigoForm) {
+      let emailActual = '';
+
+      // Paso 1: Enviar código
+      emailForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const emailInput = document.getElementById('email-recuperacion');
+        const email = emailInput.value.trim();
+        const submitBtn = emailForm.querySelector('button[type="submit"]');
+      
+        if (!email) {
+          alert('Por favor ingresá tu correo electrónico');
+          return;
+        }
+
+        try {
+          submitBtn.disabled = true;
+          submitBtn.textContent = 'Enviando...';
+        
+          await enviarCodigoRecuperacion(email);
+        
+          emailActual = email;
+          document.getElementById('email-enviado').textContent = email;
+          stepEmail.style.display = 'none';
+          stepCodigo.style.display = 'block';
+        
+        } catch (error) {
+          alert(error.message || 'Error al enviar el código. Intenta nuevamente.');
+        } finally {
+          submitBtn.disabled = false;
+          submitBtn.textContent = 'Enviar Código';
+        }
+      });
+
+      // Reenviar código
+      if (reenviarCodigoBtn) {
+        reenviarCodigoBtn.addEventListener('click', async (e) => {
+          e.preventDefault();
+          if (!emailActual) return;
+        
+          try {
+            reenviarCodigoBtn.textContent = 'Reenviando...';
+            await enviarCodigoRecuperacion(emailActual);
+            alert('Código reenviado exitosamente');
+          } catch (error) {
+            alert(error.message || 'Error al reenviar el código');
+          } finally {
+            reenviarCodigoBtn.textContent = 'Reenviar código';
+          }
+        });
+      }
+
+      // Paso 2: Verificar código y cambiar contraseña
+      codigoForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+      
+        const codigo = document.getElementById('codigo-verificacion').value.trim();
+        const nuevaPassword = document.getElementById('nueva-password').value;
+        const confirmarPassword = document.getElementById('confirmar-password').value;
+        const submitBtn = codigoForm.querySelector('button[type="submit"]');
+      
+        if (!codigo || codigo.length !== 6) {
+          alert('Por favor ingresá el código de 6 dígitos');
+          return;
+        }
+      
+        if (nuevaPassword.length < 6) {
+          alert('La contraseña debe tener al menos 6 caracteres');
+          return;
+        }
+      
+        if (nuevaPassword !== confirmarPassword) {
+          alert('Las contraseñas no coinciden');
+          return;
+        }
+
+        try {
+          submitBtn.disabled = true;
+          submitBtn.textContent = 'Verificando...';
+        
+          await verificarCodigoYCambiarPassword(emailActual, codigo, nuevaPassword);
+        
+          stepCodigo.style.display = 'none';
+          stepExito.style.display = 'block';
+        
+        } catch (error) {
+          alert(error.message || 'Error al cambiar la contraseña. Verifica el código.');
+        } finally {
+          submitBtn.disabled = false;
+          submitBtn.textContent = 'Cambiar Contraseña';
+        }
+      });
+    }
+
 }); // Fin DOMContentLoaded
+// ==============================
+// Recuperación de contraseña integrada en login.html
+// ==============================
+const btnAbrirRecuperar = document.getElementById('btn-abrir-recuperar');
+const modalRecuperar = document.getElementById('recuperar-modal');
+const emailFormRecuperar = document.getElementById('email-form-recuperar');
+const codigoFormRecuperar = document.getElementById('codigo-form-recuperar');
+const passwordFormRecuperar = document.getElementById('password-form-recuperar');
+const stepEmailRecuperar = document.getElementById('step-email-recuperar');
+const stepCodigoRecuperar = document.getElementById('step-codigo-recuperar');
+const stepPasswordRecuperar = document.getElementById('step-password-recuperar');
+const stepExitoRecuperar = document.getElementById('step-exito-recuperar');
+const reenviarCodigoRecuperar = document.getElementById('reenviar-codigo-recuperar');
+const btnVolverLoginRecuperar = document.getElementById('btn-volver-login-recuperar');
+let emailActualRecuperar = '';
+let codigoVerificadoRecuperar = '';
+
+if (btnAbrirRecuperar && modalRecuperar) {
+  btnAbrirRecuperar.addEventListener('click', (e) => {
+    e.preventDefault();
+    modalRecuperar.style.display = 'block';
+    stepEmailRecuperar.style.display = 'block';
+    stepCodigoRecuperar.style.display = 'none';
+    stepPasswordRecuperar.style.display = 'none';
+    stepExitoRecuperar.style.display = 'none';
+    document.body.style.overflow = 'hidden';
+  });
+  if (btnVolverLoginRecuperar) {
+    btnVolverLoginRecuperar.addEventListener('click', () => {
+      modalRecuperar.style.display = 'none';
+      document.body.style.overflow = '';
+    });
+  }
+}
+
+// Paso 1: Enviar código
+if (emailFormRecuperar) {
+  emailFormRecuperar.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const emailInput = document.getElementById('email-recuperacion');
+    const email = emailInput.value.trim();
+    const submitBtn = emailFormRecuperar.querySelector('button[type="submit"]');
+    if (!email) {
+      alert('Por favor ingresá tu correo electrónico');
+      return;
+    }
+    try {
+      submitBtn.disabled = true;
+      submitBtn.textContent = 'Enviando...';
+      await enviarCodigoRecuperacion(email);
+      emailActualRecuperar = email;
+      document.getElementById('email-enviado-recuperar').textContent = email;
+      stepEmailRecuperar.style.display = 'none';
+      stepCodigoRecuperar.style.display = 'block';
+    } catch (error) {
+      alert(error.message || 'Error al enviar el código. Intenta nuevamente.');
+    } finally {
+      submitBtn.disabled = false;
+      submitBtn.textContent = 'Enviar Código';
+    }
+  });
+}
+
+// Reenviar código
+if (reenviarCodigoRecuperar) {
+  reenviarCodigoRecuperar.addEventListener('click', async (e) => {
+    e.preventDefault();
+    if (!emailActualRecuperar) return;
+    try {
+      reenviarCodigoRecuperar.textContent = 'Reenviando...';
+      await enviarCodigoRecuperacion(emailActualRecuperar);
+      alert('Código reenviado exitosamente');
+    } catch (error) {
+      alert(error.message || 'Error al reenviar el código');
+    } finally {
+      reenviarCodigoRecuperar.textContent = 'Reenviar código';
+    }
+  });
+}
+
+// Paso 2: Verificar código solamente
+if (codigoFormRecuperar) {
+  codigoFormRecuperar.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const codigo = document.getElementById('codigo-verificacion-recuperar').value.trim();
+    const submitBtn = codigoFormRecuperar.querySelector('button[type="submit"]');
+    if (!codigo || codigo.length !== 6) {
+      alert('Por favor ingresá el código de 6 dígitos');
+      return;
+    }
+    try {
+      submitBtn.disabled = true;
+      submitBtn.textContent = 'Verificando...';
+      
+      // Verificar el código sin cambiar la contraseña aún
+      const emailLower = emailActualRecuperar.toLowerCase();
+      const datoCodigo = codigosRecuperacion.get(emailLower);
+      
+      if (!datoCodigo) {
+        throw new Error('No se encontró un código de verificación. Solicita uno nuevo.');
+      }
+      if (Date.now() > datoCodigo.expira) {
+        codigosRecuperacion.delete(emailLower);
+        throw new Error('El código ha expirado. Solicita uno nuevo.');
+      }
+      if (datoCodigo.intentos >= 5) {
+        codigosRecuperacion.delete(emailLower);
+        throw new Error('Demasiados intentos fallidos. Solicita un nuevo código.');
+      }
+      if (datoCodigo.codigo !== codigo) {
+        datoCodigo.intentos++;
+        throw new Error(`Código incorrecto. Intentos restantes: ${5 - datoCodigo.intentos}`);
+      }
+      
+      // Código correcto, guardar y pasar al siguiente paso
+      codigoVerificadoRecuperar = codigo;
+      stepCodigoRecuperar.style.display = 'none';
+      stepPasswordRecuperar.style.display = 'block';
+      
+    } catch (error) {
+      alert(error.message || 'Error al verificar el código.');
+    } finally {
+      submitBtn.disabled = false;
+      submitBtn.textContent = 'Verificar Código';
+    }
+  });
+}
+
+// Paso 3: Cambiar contraseña
+if (passwordFormRecuperar) {
+  passwordFormRecuperar.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const nuevaPasswordInput = document.getElementById('nueva-password-recuperar');
+    const confirmarPasswordInput = document.getElementById('confirmar-password-recuperar');
+    const nuevaPassword = nuevaPasswordInput.value.trim();
+    const confirmarPassword = confirmarPasswordInput.value.trim();
+    const submitBtn = passwordFormRecuperar.querySelector('button[type="submit"]');
+    
+    // Validaciones
+    if (!nuevaPassword || !confirmarPassword) {
+      alert('Por favor completá ambos campos de contraseña');
+      return;
+    }
+    
+    if (nuevaPassword.length < 6) {
+      alert('La contraseña debe tener al menos 6 caracteres');
+      nuevaPasswordInput.focus();
+      return;
+    }
+    
+    if (nuevaPassword !== confirmarPassword) {
+      alert('Las contraseñas no coinciden. Por favor verificá que ambas sean iguales.');
+      confirmarPasswordInput.value = '';
+      confirmarPasswordInput.focus();
+      return;
+    }
+    
+    if (!emailActualRecuperar || !codigoVerificadoRecuperar) {
+      alert('Error en el proceso. Por favor reiniciá la recuperación.');
+      return;
+    }
+    
+    try {
+      submitBtn.disabled = true;
+      submitBtn.textContent = 'Cambiando contraseña...';
+      
+      await verificarCodigoYCambiarPassword(emailActualRecuperar, codigoVerificadoRecuperar, nuevaPassword);
+      
+      // Limpiar campos
+      nuevaPasswordInput.value = '';
+      confirmarPasswordInput.value = '';
+      
+      stepPasswordRecuperar.style.display = 'none';
+      stepExitoRecuperar.style.display = 'block';
+      
+      console.log('✅ Contraseña actualizada exitosamente en la base de datos');
+    } catch (error) {
+      console.error('❌ Error al cambiar contraseña:', error);
+      alert(error.message || 'Error al cambiar la contraseña. Por favor intentá nuevamente.');
+    } finally {
+      submitBtn.disabled = false;
+      submitBtn.textContent = 'Cambiar Contraseña';
+    }
+  });
+}

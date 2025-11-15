@@ -31,6 +31,9 @@
             </div>
             <label for="password">Contraseña</label>
             <input type="text" id="password" name="fake-password" autocomplete="new-password" readonly onfocus="this.removeAttribute('readonly'); this.type='password'; this.name='password';" value="" required>
+              <p style="text-align: right; margin-top: 5px; margin-bottom: 10px;">
+                <a href="#" id="btn-abrir-recuperar" style="color: #666; font-size: 14px; text-decoration: none;">¿Olvidaste tu contraseña?</a>
+              </p>
             <button type="submit" class="btn-verificar">Ingresar</button>
             <p class="registro-link">
               ¿No tenés cuenta?
@@ -38,6 +41,70 @@
             </p>
           </form>
         </div>
+        <!-- Modal/Sección de recuperación de contraseña -->
+        <div id="recuperar-modal" style="display:none; background:rgba(255,255,255,0.98); position:fixed; top:0; left:0; width:100vw; height:100vh; z-index:1000; overflow:auto;">
+          <header class="header-principal">
+            <div class="header-content">
+              <img src="img/LOGO-removebg-preview.png" alt="Logo principal Activá" class="header-logo-centro">
+            </div>
+          </header>
+          <main class="main-container">
+            <p class="form-desc">
+              Ingresá tu correo electrónico para recuperar tu contraseña
+            </p>
+            <div class="code-box code-box-login-main">
+              <section class="form-section">
+                <h2 class="form-title">Recuperar Contraseña</h2>
+              <!-- Paso 1: Solicitar email -->
+              <div id="step-email-recuperar" class="registro-input-box">
+                <form id="email-form-recuperar">
+                  <label for="email-recuperacion">Correo Electrónico</label>
+                  <input type="email" id="email-recuperacion" placeholder="ej: ejemplo@email.com" required>
+                  <button type="submit" class="btn-verificar">Enviar Código</button>
+                </form>
+                <p class="registro-link" style="margin-top:10px; font-size:13px; color:#666;">Te enviaremos un código de verificación a tu correo.</p>
+              </div>
+              <!-- Paso 2: Ingresar código -->
+              <div id="step-codigo-recuperar" class="registro-input-box" style="display:none;">
+                <p style="color: #666; margin-bottom: 20px; font-size: 14px;">
+                  Se envió un código de 6 dígitos a <strong id="email-enviado-recuperar"></strong>
+                </p>
+                <form id="codigo-form-recuperar">
+                  <label for="codigo-verificacion-recuperar">Código de Verificación</label>
+                  <input type="text" id="codigo-verificacion-recuperar" placeholder="Ingresá el código de 6 dígitos" maxlength="6" pattern="[0-9]{6}" required>
+                  <button type="submit" class="btn-verificar">Verificar Código</button>
+                  <p class="registro-link" style="margin-top:10px; font-size:13px; color:#666;">
+                    <a href="#" id="reenviar-codigo-recuperar" style="color:#666;">Reenviar código</a>
+                  </p>
+                </form>
+              </div>
+              <!-- Paso 3: Nueva contraseña -->
+              <div id="step-password-recuperar" class="registro-input-box" style="display:none;">
+                <p style="color: #4CAF50; margin-bottom: 20px; font-size: 14px;">
+                  ✓ Código verificado correctamente
+                </p>
+                <form id="password-form-recuperar">
+                  <label for="nueva-password-recuperar">Nueva Contraseña</label>
+                  <input type="password" id="nueva-password-recuperar" placeholder="Mínimo 6 caracteres" minlength="6" autocomplete="new-password" required>
+                  <label for="confirmar-password-recuperar">Confirmar Contraseña</label>
+                  <input type="password" id="confirmar-password-recuperar" placeholder="Repetí la contraseña" minlength="6" autocomplete="new-password" required>
+                  <button type="submit" class="btn-verificar">Cambiar Contraseña</button>
+                </form>
+              </div>
+              <!-- Mensaje de éxito -->
+              <div id="step-exito-recuperar" style="display:none; text-align: center; padding: 20px;">
+                <div style="font-size: 60px; color: #4CAF50; margin-bottom: 20px;">✓</div>
+                <h3 style="color: #4CAF50; margin-bottom: 10px;">¡Contraseña actualizada!</h3>
+                <p style="color: #666; margin-bottom: 20px;">Tu contraseña ha sido cambiada exitosamente.</p>
+                <button class="btn-verificar" id="btn-volver-login-recuperar">Iniciar Sesión</button>
+              </div>
+            </section>
+          </div>
+        </main>
+        <footer class="footer-tfi" style="position:absolute; bottom:0; width:100%; margin-top:0;">
+          TFI INGENIERIA EN SISTEMAS DE INFORMACION 2025. AUTORES : MAROSECK YELENKA Y RUIZ DIAZ LUCIANO
+        </footer>
+      </div>
       </section>
     </div>
   </main>
