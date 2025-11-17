@@ -5726,3 +5726,1059 @@ body[data-protected="true"] {
   filter: brightness(1.04);
 }
 
+/* =====================================================
+   📱 RESPONSIVE DESIGN - MOBILE FIRST
+   ===================================================== */
+
+/* =====================================================
+   INDEX.HTML - LANDING PAGE RESPONSIVE (VERSIÓN PROFESIONAL)
+   ===================================================== */
+
+/* 1024px: Tablets landscape y pantallas medianas */
+@media (max-width: 1024px) {
+  /* Header ajustes completos */
+  .home .header-principal {
+    height: 110px;
+    box-shadow: 0 2px 7px rgba(0,0,0,0.03);
+    background: rgba(255, 255, 255, 0.68);
+    backdrop-filter: blur(5.8px);
+    -webkit-backdrop-filter: blur(5.8px);
+  }
+  
+  .home .header-content {
+    padding: 0 18px;
+  }
+  
+  .home .header-principal .header-logo-centro {
+    width: 220px;
+    height: 220px;
+  }
+
+  /* Hero overlay */
+  .home .hero-overlay {
+    padding: 22px;
+  }
+
+  /* Hero card completo */
+  .home .hero-card {
+    max-width: 490px;
+    padding: 32px 20px;
+    border-radius: 15px;
+    background: rgba(255, 255, 255, 0.68);
+    backdrop-filter: blur(6px);
+    -webkit-backdrop-filter: blur(6px);
+    border: 1px solid rgba(255, 255, 255, 0.6);
+    box-shadow: 
+      0 8px 36px rgba(0, 0, 0, 0.09),
+      0 2px 8px rgba(0, 39, 24, 0.06);
+  }
+
+  /* Texto hero */
+  .home .hero-text {
+    font-size: clamp(14.5px, 1vw + 11.5px, 17.5px);
+    line-height: 1.42;
+    margin-bottom: 13px;
+    letter-spacing: 0.01em;
+    text-wrap: balance;
+  }
+
+  /* Botón unirse */
+  .home .btn-unirme {
+    padding: 9px 19px;
+    min-width: 135px;
+    font-size: 13.5px;
+    border-radius: 9.5px;
+    border: 1px solid rgba(255, 255, 255, 0.45);
+    box-shadow: 
+      0 2px 8px rgba(0, 120, 60, 0.22),
+      0 1px 3px rgba(0, 0, 0, 0.08);
+    transition: all 0.25s ease;
+  }
+
+  /* Footer */
+  .home .footer-tfi {
+    font-size: 0.95rem;
+    padding: 0.19em 0;
+    letter-spacing: 0.018em;
+    background: rgba(255, 255, 255, 0.68);
+    backdrop-filter: blur(5.8px);
+    -webkit-backdrop-filter: blur(5.8px);
+    box-shadow: 0 -2px 7px rgba(0,0,0,0.03);
+  }
+}
+
+/* 767px: Tablets portrait */
+@media (max-width: 767px) {
+  /* Header completo */
+  .home .header-principal {
+    height: 100px;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.025);
+    background: rgba(255, 255, 255, 0.7);
+    backdrop-filter: blur(5.5px);
+    -webkit-backdrop-filter: blur(5.5px);
+  }
+
+  .home .header-content {
+    padding: 0 16px;
+  }
+  
+  .home .header-principal .header-logo-centro {
+    width: 190px;
+    height: 190px;
+  }
+
+  /* Backdrop blur global */
+  body.home::before {
+    backdrop-filter: blur(2.8px);
+    -webkit-backdrop-filter: blur(2.8px);
+    background: rgba(255, 255, 255, 0.13);
+  }
+
+  /* Hero overlay */
+  .home .hero-overlay {
+    padding: 20px;
+  }
+
+  /* Hero card completo */
+  .home .hero-card {
+    max-width: 440px;
+    padding: 28px 18px;
+    border-radius: 14px;
+    background: rgba(255, 255, 255, 0.7);
+    backdrop-filter: blur(5.5px);
+    -webkit-backdrop-filter: blur(5.5px);
+    border: 1px solid rgba(255, 255, 255, 0.65);
+    box-shadow: 
+      0 6px 30px rgba(0, 0, 0, 0.08),
+      0 2px 6px rgba(0, 39, 24, 0.05);
+  }
+
+  /* Texto */
+  .home .hero-text {
+    font-size: clamp(13.5px, 1vw + 11px, 17px);
+    line-height: 1.4;
+    margin-bottom: 12px;
+    letter-spacing: 0.01em;
+    text-wrap: balance;
+  }
+
+  /* Botón completo */
+  .home .btn-unirme {
+    padding: 8.5px 17px;
+    min-width: 125px;
+    font-size: 13px;
+    border-radius: 9px;
+    border: 1px solid rgba(255, 255, 255, 0.5);
+    box-shadow: 
+      0 2px 7px rgba(0, 120, 60, 0.2),
+      0 1px 2px rgba(0, 0, 0, 0.07);
+    transition: all 0.25s ease;
+  }
+
+  .home .btn-unirme:hover {
+    box-shadow: 
+      0 3px 10px rgba(0, 120, 60, 0.28),
+      0 1px 3px rgba(0, 0, 0, 0.1);
+    transform: translateY(-1px);
+  }
+
+  /* Footer */
+  .home .footer-tfi {
+    font-size: 0.9rem;
+    padding: 0.18em 0;
+    letter-spacing: 0.016em;
+    background: rgba(255, 255, 255, 0.7);
+    backdrop-filter: blur(5.5px);
+    -webkit-backdrop-filter: blur(5.5px);
+    box-shadow: 0 -2px 6px rgba(0,0,0,0.025);
+  }
+}
+
+/* 640px: Móviles grandes */
+@media (max-width: 640px) {
+  /* Header completo */
+  .home .header-principal {
+    height: 88px;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.02);
+    background: rgba(255, 255, 255, 0.72);
+    backdrop-filter: blur(5px);
+    -webkit-backdrop-filter: blur(5px);
+  }
+
+  .home .header-content {
+    padding: 0 14px;
+  }
+  
+  .home .header-principal .header-logo-centro {
+    width: 165px;
+    height: 165px;
+  }
+
+  /* Backdrop blur global */
+  body.home::before {
+    backdrop-filter: blur(2.5px);
+    -webkit-backdrop-filter: blur(2.5px);
+    background: rgba(255, 255, 255, 0.14);
+  }
+
+  /* Hero overlay */
+  .home .hero-overlay {
+    padding: 18px;
+  }
+
+  /* Hero card completo */
+  .home .hero-card {
+    max-width: 380px;
+    padding: 25px 16px;
+    border-radius: 13px;
+    background: rgba(255, 255, 255, 0.72);
+    backdrop-filter: blur(5px);
+    -webkit-backdrop-filter: blur(5px);
+    border: 1px solid rgba(255, 255, 255, 0.7);
+    box-shadow: 
+      0 5px 24px rgba(0, 0, 0, 0.07),
+      0 2px 5px rgba(0, 39, 24, 0.04);
+  }
+
+  /* Texto */
+  .home .hero-text {
+    font-size: clamp(13px, 1vw + 10.5px, 16px);
+    line-height: 1.38;
+    margin-bottom: 11px;
+    letter-spacing: 0.008em;
+    text-wrap: balance;
+  }
+
+  /* Botón completo */
+  .home .btn-unirme {
+    padding: 8px 15px;
+    min-width: 115px;
+    font-size: 12.5px;
+    border-radius: 8.5px;
+    border: 1px solid rgba(255, 255, 255, 0.52);
+    box-shadow: 
+      0 2px 6px rgba(0, 120, 60, 0.18),
+      0 1px 2px rgba(0, 0, 0, 0.06);
+    transition: all 0.2s ease;
+  }
+
+  .home .btn-unirme:hover {
+    box-shadow: 
+      0 3px 9px rgba(0, 120, 60, 0.25),
+      0 1px 3px rgba(0, 0, 0, 0.08);
+    transform: translateY(-1px);
+  }
+
+  /* Footer */
+  .home .footer-tfi {
+    font-size: 0.85rem;
+    padding: 0.17em 0;
+    letter-spacing: 0.014em;
+    background: rgba(255, 255, 255, 0.72);
+    backdrop-filter: blur(5px);
+    -webkit-backdrop-filter: blur(5px);
+    box-shadow: 0 -2px 5px rgba(0,0,0,0.02);
+  }
+}
+
+/* 480px: Móviles medianos */
+@media (max-width: 480px) {
+  /* Header completo */
+  .home .header-principal {
+    height: 78px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.018);
+    background: rgba(255, 255, 255, 0.74);
+    backdrop-filter: blur(4.5px);
+    -webkit-backdrop-filter: blur(4.5px);
+  }
+
+  .home .header-content {
+    padding: 0 12px;
+  }
+  
+  .home .header-principal .header-logo-centro {
+    width: 145px;
+    height: 145px;
+  }
+
+  /* Backdrop blur global */
+  body.home::before {
+    backdrop-filter: blur(2.2px);
+    -webkit-backdrop-filter: blur(2.2px);
+    background: rgba(255, 255, 255, 0.15);
+  }
+
+  /* Hero overlay */
+  .home .hero-overlay {
+    padding: 16px;
+  }
+
+  /* Hero card completo */
+  .home .hero-card {
+    max-width: 340px;
+    padding: 22px 14px;
+    border-radius: 12px;
+    background: rgba(255, 255, 255, 0.74);
+    backdrop-filter: blur(4.5px);
+    -webkit-backdrop-filter: blur(4.5px);
+    border: 1px solid rgba(255, 255, 255, 0.72);
+    box-shadow: 
+      0 4px 20px rgba(0, 0, 0, 0.065),
+      0 1.5px 4px rgba(0, 39, 24, 0.035);
+  }
+
+  /* Texto */
+  .home .hero-text {
+    font-size: clamp(12.5px, 1vw + 10px, 15px);
+    line-height: 1.36;
+    margin-bottom: 10px;
+    letter-spacing: 0.006em;
+    text-wrap: balance;
+  }
+
+  /* Botón completo */
+  .home .btn-unirme {
+    padding: 7px 14px;
+    min-width: 105px;
+    font-size: 12px;
+    border-radius: 8px;
+    border: 1px solid rgba(255, 255, 255, 0.54);
+    box-shadow: 
+      0 2px 5px rgba(0, 120, 60, 0.16),
+      0 1px 2px rgba(0, 0, 0, 0.05);
+    transition: all 0.2s ease;
+  }
+
+  .home .btn-unirme:hover {
+    box-shadow: 
+      0 3px 8px rgba(0, 120, 60, 0.22),
+      0 1px 3px rgba(0, 0, 0, 0.07);
+    transform: translateY(-1px);
+  }
+
+  .home .btn-unirme:active {
+    transform: translateY(0);
+  }
+
+  /* Footer */
+  .home .footer-tfi {
+    font-size: 0.8rem;
+    padding: 0.16em 0;
+    letter-spacing: 0.012em;
+    background: rgba(255, 255, 255, 0.74);
+    backdrop-filter: blur(4.5px);
+    -webkit-backdrop-filter: blur(4.5px);
+    box-shadow: 0 -2px 4px rgba(0,0,0,0.018);
+  }
+}
+
+/* 375px: Móviles pequeños */
+@media (max-width: 375px) {
+  /* Header completo */
+  .home .header-principal {
+    height: 72px;
+    box-shadow: 0 1.5px 3.5px rgba(0,0,0,0.015);
+    background: rgba(255, 255, 255, 0.76);
+    backdrop-filter: blur(4px);
+    -webkit-backdrop-filter: blur(4px);
+  }
+
+  .home .header-content {
+    padding: 0 10px;
+  }
+  
+  .home .header-principal .header-logo-centro {
+    width: 130px;
+    height: 130px;
+  }
+
+  /* Backdrop blur global */
+  body.home::before {
+    backdrop-filter: blur(2px);
+    -webkit-backdrop-filter: blur(2px);
+    background: rgba(255, 255, 255, 0.16);
+  }
+
+  /* Hero overlay */
+  .home .hero-overlay {
+    padding: 14px;
+  }
+
+  /* Hero card completo */
+  .home .hero-card {
+    max-width: 305px;
+    padding: 20px 12px;
+    border-radius: 11px;
+    background: rgba(255, 255, 255, 0.76);
+    backdrop-filter: blur(4px);
+    -webkit-backdrop-filter: blur(4px);
+    border: 1px solid rgba(255, 255, 255, 0.74);
+    box-shadow: 
+      0 3.5px 16px rgba(0, 0, 0, 0.06),
+      0 1px 3px rgba(0, 39, 24, 0.03);
+  }
+
+  /* Texto */
+  .home .hero-text {
+    font-size: clamp(12px, 1vw + 9px, 14px);
+    line-height: 1.34;
+    margin-bottom: 9px;
+    letter-spacing: 0.005em;
+    text-wrap: balance;
+  }
+
+  /* Botón completo */
+  .home .btn-unirme {
+    padding: 6.5px 12px;
+    min-width: 95px;
+    font-size: 11.5px;
+    border-radius: 7.5px;
+    border: 1px solid rgba(255, 255, 255, 0.56);
+    box-shadow: 
+      0 2px 4.5px rgba(0, 120, 60, 0.14),
+      0 1px 1.5px rgba(0, 0, 0, 0.045);
+    transition: all 0.18s ease;
+  }
+
+  .home .btn-unirme:hover {
+    box-shadow: 
+      0 2.5px 7px rgba(0, 120, 60, 0.2),
+      0 1px 2.5px rgba(0, 0, 0, 0.065);
+    transform: translateY(-0.5px);
+  }
+
+  .home .btn-unirme:active {
+    transform: translateY(0);
+    box-shadow: 
+      0 1.5px 4px rgba(0, 120, 60, 0.12),
+      0 0.5px 1.5px rgba(0, 0, 0, 0.04);
+  }
+
+  /* Footer */
+  .home .footer-tfi {
+    font-size: 0.75rem;
+    padding: 0.14em 0;
+    letter-spacing: 0.01em;
+    background: rgba(255, 255, 255, 0.76);
+    backdrop-filter: blur(4px);
+    -webkit-backdrop-filter: blur(4px);
+    box-shadow: 0 -1.5px 3.5px rgba(0,0,0,0.015);
+  }
+}
+
+/* Landscape mobile: Modo horizontal */
+@media (max-height: 500px) and (orientation: landscape) {
+  /* Header compacto */
+  .home .header-principal {
+    height: 65px;
+    box-shadow: 0 1.5px 3px rgba(0,0,0,0.012);
+    background: rgba(255, 255, 255, 0.78);
+    backdrop-filter: blur(3.5px);
+    -webkit-backdrop-filter: blur(3.5px);
+  }
+
+  .home .header-content {
+    padding: 0 8px;
+  }
+
+  .home .header-principal .header-logo-centro {
+    width: 110px;
+    height: 110px;
+  }
+
+  /* Backdrop blur reducido */
+  body.home::before {
+    backdrop-filter: blur(1.8px);
+    -webkit-backdrop-filter: blur(1.8px);
+    background: rgba(255, 255, 255, 0.17);
+  }
+
+  /* Hero overlay mínimo */
+  .home .hero-overlay {
+    padding: 12px;
+  }
+
+  /* Hero card horizontal */
+  .home .hero-card {
+    max-width: 420px;
+    padding: 16px 14px;
+    border-radius: 10px;
+    background: rgba(255, 255, 255, 0.78);
+    backdrop-filter: blur(3.5px);
+    -webkit-backdrop-filter: blur(3.5px);
+    border: 1px solid rgba(255, 255, 255, 0.76);
+    box-shadow: 
+      0 3px 14px rgba(0, 0, 0, 0.055),
+      0 1px 3px rgba(0, 39, 24, 0.025);
+  }
+
+  /* Texto compacto */
+  .home .hero-text {
+    font-size: 12px;
+    line-height: 1.32;
+    margin-bottom: 8px;
+    letter-spacing: 0.004em;
+    text-wrap: balance;
+  }
+
+  /* Botón compacto */
+  .home .btn-unirme {
+    padding: 5.5px 11px;
+    font-size: 11px;
+    min-width: 88px;
+    border-radius: 7px;
+    border: 1px solid rgba(255, 255, 255, 0.58);
+    box-shadow: 
+      0 1.5px 4px rgba(0, 120, 60, 0.12),
+      0 0.5px 1.5px rgba(0, 0, 0, 0.04);
+    transition: all 0.15s ease;
+  }
+
+  .home .btn-unirme:hover {
+    box-shadow: 
+      0 2px 6px rgba(0, 120, 60, 0.18),
+      0 1px 2px rgba(0, 0, 0, 0.055);
+    transform: translateY(-0.5px);
+  }
+
+  /* Footer ultra compacto */
+  .home .footer-tfi {
+    font-size: 0.7rem;
+    padding: 0.12em 0;
+    letter-spacing: 0.008em;
+    background: rgba(255, 255, 255, 0.78);
+    backdrop-filter: blur(3.5px);
+    -webkit-backdrop-filter: blur(3.5px);
+    box-shadow: 0 -1.5px 3px rgba(0,0,0,0.012);
+  }
+}
+
+/* =====================================================
+   LOGIN.HTML - INICIO DE SESIÓN RESPONSIVE
+   ===================================================== */
+
+/* Tablets y dispositivos medianos (768px - 1024px) */
+@media (max-width: 1024px) {
+  /* Form description */
+  .form-desc {
+    font-size: 1rem;
+    margin-top: 0.4em;
+  }
+  
+  /* Code box login */
+  .code-box-login-main {
+    max-width: 90%;
+    padding: 1.3em 1.5em;
+    margin: 1em auto;
+  }
+  
+  /* Form title */
+  .form-title {
+    font-size: 1.6rem;
+    margin-bottom: 0.4em;
+  }
+  
+  /* Input box */
+  .registro-input-box {
+    padding: 0;
+  }
+  
+  .registro-input-box form label {
+    font-size: 0.95rem;
+    margin-bottom: 0.3em;
+  }
+  
+  .registro-input-box form input {
+    font-size: 0.95rem;
+    padding: 0.7em;
+  }
+  
+  /* Button */
+  .registro-input-box .btn-verificar {
+    padding: 0.8em 1.5em;
+    font-size: 0.95rem;
+  }
+  
+  /* Modal recuperación */
+  #recuperar-modal .main-container {
+    padding: 1em;
+  }
+}
+
+/* Móviles grandes y tablets pequeñas (641px - 767px) */
+@media (max-width: 767px) {
+  /* Header más compacto */
+  .header-principal {
+    padding: 12px 16px;
+  }
+  
+  .header-principal .header-logo-centro {
+    max-height: 75px;
+  }
+  
+  /* Main container */
+  .main-container {
+    padding: 1em 12px;
+  }
+  
+  /* Form description */
+  .form-desc {
+    font-size: 0.95rem;
+    margin-top: 0.3em;
+    padding: 0 8px;
+  }
+  
+  /* Code box login */
+  .code-box-login-main {
+    max-width: 94%;
+    padding: 1.2em 1.3em;
+    margin: 0.8em auto;
+    border-radius: 16px;
+  }
+  
+  /* Form title */
+  .form-title {
+    font-size: 1.5rem;
+    margin-bottom: 0.5em;
+  }
+  
+  /* Input box */
+  .registro-input-box form label {
+    font-size: 0.9rem;
+    margin-bottom: 0.4em;
+  }
+  
+  .registro-input-box form input {
+    font-size: 0.9rem;
+    padding: 0.65em;
+    border-radius: 8px;
+  }
+  
+  /* Button */
+  .registro-input-box .btn-verificar {
+    padding: 0.75em 1.4em;
+    font-size: 0.9rem;
+    border-radius: 10px;
+  }
+  
+  /* Link texto */
+  .registro-link {
+    font-size: 0.85rem;
+  }
+  
+  .login-btn-link {
+    font-size: 0.85rem;
+  }
+  
+  /* Link "Olvidaste contraseña" */
+  #btn-abrir-recuperar {
+    font-size: 13px !important;
+  }
+  
+  /* Footer */
+  .footer-tfi {
+    font-size: 9px;
+    padding: 12px 16px;
+  }
+  
+  /* Modal recuperación */
+  #recuperar-modal .header-principal {
+    padding: 12px 16px;
+  }
+  
+  #recuperar-modal .footer-tfi {
+    font-size: 9px;
+    padding: 12px 16px;
+  }
+}
+
+/* Móviles estándar (481px - 640px) */
+@media (max-width: 640px) {
+  /* Header */
+  .header-principal {
+    padding: 10px 12px;
+  }
+  
+  .header-principal .header-logo-centro {
+    max-height: 65px;
+  }
+  
+  /* Main container */
+  .main-container {
+    padding: 0.8em 10px;
+  }
+  
+  /* Form description */
+  .form-desc {
+    font-size: 0.9rem;
+    margin-top: 0.4em;
+    padding: 0 6px;
+    line-height: 1.4;
+  }
+  
+  /* Code box login */
+  .code-box-login-main {
+    max-width: 95%;
+    padding: 1.1em 1.2em;
+    margin: 0.7em auto;
+    border-radius: 14px;
+    gap: 0.9em;
+  }
+  
+  /* Form title */
+  .form-title {
+    font-size: 1.4rem;
+    margin-bottom: 0.6em;
+  }
+  
+  /* Input box */
+  .registro-input-box {
+    gap: 0.8em;
+  }
+  
+  .registro-input-box form label {
+    font-size: 0.85rem;
+    margin-bottom: 0.35em;
+  }
+  
+  .registro-input-box form input {
+    font-size: 0.85rem;
+    padding: 0.6em;
+    border-radius: 8px;
+  }
+  
+  /* Button */
+  .registro-input-box .btn-verificar {
+    padding: 0.7em 1.3em;
+    font-size: 0.85rem;
+    border-radius: 10px;
+    margin-top: 0.5em;
+  }
+  
+  /* Link texto */
+  .registro-link {
+    font-size: 0.8rem;
+    margin-top: 0.8em;
+  }
+  
+  .login-btn-link {
+    font-size: 0.8rem;
+  }
+  
+  /* Link "Olvidaste contraseña" */
+  #btn-abrir-recuperar {
+    font-size: 12px !important;
+  }
+  
+  /* Footer */
+  .footer-tfi {
+    font-size: 8px;
+    padding: 10px 12px;
+    line-height: 1.4;
+  }
+  
+  /* Modal recuperación - Steps */
+  #step-email-recuperar p,
+  #step-codigo-recuperar p,
+  #step-password-recuperar p {
+    font-size: 13px;
+    margin-bottom: 16px;
+  }
+  
+  #step-exito-recuperar div:first-child {
+    font-size: 50px;
+    margin-bottom: 16px;
+  }
+  
+  #step-exito-recuperar h3 {
+    font-size: 1.3rem;
+    margin-bottom: 8px;
+  }
+  
+  #step-exito-recuperar p {
+    font-size: 0.85rem;
+    margin-bottom: 16px;
+  }
+}
+
+/* Móviles pequeños (376px - 480px) */
+@media (max-width: 480px) {
+  /* Header */
+  .header-principal {
+    padding: 8px 10px;
+  }
+  
+  .header-principal .header-logo-centro {
+    max-height: 58px;
+  }
+  
+  /* Main container */
+  .main-container {
+    padding: 0.7em 8px;
+  }
+  
+  /* Form description */
+  .form-desc {
+    font-size: 0.85rem;
+    margin-top: 0.3em;
+    padding: 0 4px;
+    line-height: 1.35;
+  }
+  
+  /* Code box login */
+  .code-box-login-main {
+    max-width: 96%;
+    padding: 1em 1.1em;
+    margin: 0.6em auto;
+    border-radius: 12px;
+    gap: 0.8em;
+  }
+  
+  /* Form title */
+  .form-title {
+    font-size: 1.3rem;
+    margin-bottom: 0.7em;
+  }
+  
+  /* Input box */
+  .registro-input-box {
+    gap: 0.7em;
+  }
+  
+  .registro-input-box form label {
+    font-size: 0.8rem;
+    margin-bottom: 0.3em;
+  }
+  
+  .registro-input-box form input {
+    font-size: 0.8rem;
+    padding: 0.55em;
+    border-radius: 7px;
+  }
+  
+  /* Button */
+  .registro-input-box .btn-verificar {
+    padding: 0.65em 1.2em;
+    font-size: 0.8rem;
+    border-radius: 9px;
+    margin-top: 0.4em;
+  }
+  
+  /* Link texto */
+  .registro-link {
+    font-size: 0.75rem;
+    margin-top: 0.7em;
+  }
+  
+  .login-btn-link {
+    font-size: 0.75rem;
+  }
+  
+  /* Link "Olvidaste contraseña" */
+  #btn-abrir-recuperar {
+    font-size: 11px !important;
+    margin-top: 3px;
+  }
+  
+  /* Footer */
+  .footer-tfi {
+    font-size: 7px;
+    padding: 8px 10px;
+    line-height: 1.3;
+  }
+  
+  /* Modal recuperación - Steps */
+  #step-email-recuperar p,
+  #step-codigo-recuperar p,
+  #step-password-recuperar p {
+    font-size: 12px;
+    margin-bottom: 14px;
+  }
+  
+  #step-exito-recuperar div:first-child {
+    font-size: 45px;
+    margin-bottom: 14px;
+  }
+  
+  #step-exito-recuperar h3 {
+    font-size: 1.2rem;
+    margin-bottom: 7px;
+  }
+  
+  #step-exito-recuperar p {
+    font-size: 0.8rem;
+    margin-bottom: 14px;
+  }
+  
+  /* Email enviado */
+  #email-enviado-recuperar {
+    font-size: 13px;
+    word-break: break-word;
+  }
+}
+
+/* Móviles muy pequeños (320px - 375px) */
+@media (max-width: 375px) {
+  /* Header */
+  .header-principal {
+    padding: 6px 8px;
+  }
+  
+  .header-principal .header-logo-centro {
+    max-height: 52px;
+  }
+  
+  /* Main container */
+  .main-container {
+    padding: 0.6em 6px;
+  }
+  
+  /* Form description */
+  .form-desc {
+    font-size: 0.8rem;
+    margin-top: 0.3em;
+    padding: 0 2px;
+    line-height: 1.3;
+  }
+  
+  /* Code box login */
+  .code-box-login-main {
+    max-width: 97%;
+    padding: 0.9em 1em;
+    margin: 0.5em auto;
+    border-radius: 10px;
+    gap: 0.7em;
+  }
+  
+  /* Form title */
+  .form-title {
+    font-size: 1.2rem;
+    margin-bottom: 0.8em;
+  }
+  
+  /* Input box */
+  .registro-input-box {
+    gap: 0.6em;
+  }
+  
+  .registro-input-box form label {
+    font-size: 0.75rem;
+    margin-bottom: 0.25em;
+  }
+  
+  .registro-input-box form input {
+    font-size: 0.75rem;
+    padding: 0.5em;
+    border-radius: 6px;
+  }
+  
+  /* Button */
+  .registro-input-box .btn-verificar {
+    padding: 0.6em 1.1em;
+    font-size: 0.75rem;
+    border-radius: 8px;
+    margin-top: 0.3em;
+  }
+  
+  /* Link texto */
+  .registro-link {
+    font-size: 0.7rem;
+    margin-top: 0.6em;
+  }
+  
+  .login-btn-link {
+    font-size: 0.7rem;
+  }
+  
+  /* Link "Olvidaste contraseña" */
+  #btn-abrir-recuperar {
+    font-size: 10px !important;
+    margin-top: 2px;
+  }
+  
+  /* Footer */
+  .footer-tfi {
+    font-size: 6.5px;
+    padding: 6px 8px;
+    line-height: 1.3;
+  }
+  
+  /* Modal recuperación - Steps */
+  #step-email-recuperar p,
+  #step-codigo-recuperar p,
+  #step-password-recuperar p {
+    font-size: 11px;
+    margin-bottom: 12px;
+    line-height: 1.4;
+  }
+  
+  #step-exito-recuperar div:first-child {
+    font-size: 40px;
+    margin-bottom: 12px;
+  }
+  
+  #step-exito-recuperar h3 {
+    font-size: 1.1rem;
+    margin-bottom: 6px;
+  }
+  
+  #step-exito-recuperar p {
+    font-size: 0.75rem;
+    margin-bottom: 12px;
+  }
+  
+  /* Email enviado */
+  #email-enviado-recuperar {
+    font-size: 12px;
+    word-break: break-all;
+  }
+  
+  /* Padding del form */
+  #email-form-recuperar,
+  #codigo-form-recuperar,
+  #password-form-recuperar {
+    padding: 0 4px;
+  }
+}
+
+/* Landscape mode para móviles */
+@media (max-height: 500px) and (orientation: landscape) {
+  .main-container {
+    padding: 0.5em 10px;
+  }
+  
+  .code-box-login-main {
+    margin: 0.4em auto;
+    padding: 0.8em 1em;
+  }
+  
+  .form-title {
+    font-size: 1.2rem;
+    margin-bottom: 0.5em;
+  }
+  
+  .form-desc {
+    font-size: 0.8rem;
+    margin-top: 0.2em;
+  }
+  
+  .registro-input-box form label {
+    margin-bottom: 0.2em;
+  }
+  
+  .registro-input-box form input {
+    padding: 0.5em;
+  }
+  
+  .registro-input-box .btn-verificar {
+    padding: 0.5em 1em;
+    margin-top: 0.3em;
+  }
+  
+  /* Modal en landscape */
+  #recuperar-modal .code-box-login-main {
+    max-height: 85vh;
+    overflow-y: auto;
+  }
+}
+

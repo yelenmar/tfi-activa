@@ -1,5 +1,5 @@
 cd "C:\proyectos\PROYECTO-FINAL-INTEGRADOR-VSC"
 git status
 git add .
-git commit -m "Notificaciones"
+git commit -m "recuperacion de cuenta"
 git push origin main
