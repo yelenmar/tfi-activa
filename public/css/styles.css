@@ -695,6 +695,8 @@ body.home {
   padding: 0;
   margin: 0;
   overflow: hidden; /* sin scroll */
+  height: calc(100vh - 120px); /* altura total menos header y footer */
+  max-height: calc(100vh - 120px);
 }
 
 /* Ocultar íconos del fondo animado en el home */
@@ -1049,7 +1051,11 @@ body {
   padding: 0.2em 0;
   border-top: 1.5px solid var(--gray);
   letter-spacing: 0.02em;
-  margin-top: auto;
+  position: fixed;
+  left: 0;
+  bottom: 0;
+  margin-top: 0;
+  z-index: 100;
 }
 
 .main-container {
@@ -1057,7 +1063,7 @@ body {
   z-index: 1;
   width: 100vw;
   max-width: 100vw;
-  min-height: calc(100vh - 300px);
+  min-height: calc(100vh - 120px); /* espacio para header y footer */
   background: transparent;
   margin: 0;
   padding: 10px 0;
@@ -1068,7 +1074,7 @@ body {
   flex: 1;
   box-sizing: border-box;
   overflow-x: hidden;
-  overflow-y: hidden;
+  overflow-y: auto;
 }
 
 .subtitulo {
@@ -1109,6 +1115,13 @@ body {
   overflow: hidden;
   border-radius: 8px;
   box-shadow: 0 5px 20px rgba(0, 0, 0, 0.2);
+}
+
+body.home {
+  height: 100vh;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
 }
 
 .carrusel-imagenes .img-actividad {
@@ -1529,6 +1542,11 @@ form textarea {
   margin: var(--space-xl) auto;
   padding: 20px;
   box-sizing: border-box;
+}
+
+.inicio-card-evento:last-of-type,
+.evento-card:last-of-type {
+  margin-bottom: 80px;
 }
 
 /* Anchos máximos por tipo de card */
